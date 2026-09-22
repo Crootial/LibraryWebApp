@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8" />
+ <title>MyLibrary</title>
+</head>
+
+<body>
+    <h1>MyLibrary</h1>
+    <h3>Add a book</h3>
+    <input id="title" placeholder="Title" />
+    <input id="author" placeholder="Author" />
+    <input id="year" placeholder="Year" />
+    <button onclick="addBook()">Add book</button>
+    <h3>My books</h3>
+    <ul id="books"></ul>
+    <h3>Look up online</h3>
+    <input id="search" placeholder="Title to search" />
+    <button onclick="lookup()">Search online</button>
+    <ul id="results"></ul>
+    <script>
+ async function loadBooks() {
+        const res = await fetch("/api/books");
+        const books = await res.json();
+        let html = "";
+    for (let i = 0; i < books.length; i++) {
+        const b = books[i];
+            html += "<li>" + b.title + " by " + b.author + " (" + b.year + ") ";
+            html += "<a href='edit.html?id=" + b.id + "'>Edit</a> ";
+            html += "<button onclick='deleteBook(" + b.id + ")'>Delete</button>";
+            html += "</li>";
+        }
+    document.getElementById("books").innerHTML = html;
+ }
+ async function addBook() {
+     const book = {
+        title: document.getElementById("title").value,
+        author: document.getElementById("author").value,
+        year: document.getElementById("year").value,
+    };
+    await fetch("/api/books", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(book),
+    });
+    loadBooks();
+ }
+ async function deleteBook(id) {
+    await fetch("/api/books/" + id, { method: "DELETE" });
+    loadBooks();
+ }
+ async function lookup() {
+        const title = document.getElementById("search").value;
+        const res = await fetch("/api/lookup?title=" + title);
+        const results = await res.json();
+        let html = "";
+        for (let i = 0; i < results.length; i++) {
+        const r = results[i];
+        html += "<li>" + r.title + " by " + r.author + " (" + r.year + ")</li>";
+    }
+    document.getElementById("results").innerHTML = html;
+ }
+ loadBooks();
+ </script>
+</body>
+</html>
