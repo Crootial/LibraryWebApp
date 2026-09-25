@@ -2,255 +2,112 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#14213d" />
   <title>MyGameVault</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-    }
-    ul {
-      list-style-type: none;
-      padding: 0;
-    }
-    .game-item {
-      display: flex;
-      gap: 15px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 12px;
-      align-items: flex-start;
-      max-width: 600px;
-      background-color: #f9f9f9;
-    }
-    .game-thumb {
-      width: 100px;
-      height: 100px;
-      object-fit: cover;
-      border-radius: 6px;
-      background-color: #ddd;
-    }
-    .game-info {
-      flex: 1;
-    }
-    .actions {
-      margin-top: 10px;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-    .btn {
-      cursor: pointer;
-      padding: 5px 10px;
-      border: 1px solid #999;
-      border-radius: 4px;
-      background-color: #fff;
-    }
-    .btn-delete {
-      background-color: #ff4d4d;
-      color: white;
-      border: none;
-    }
-    .btn-delete:hover {
-      background-color: #cc0000;
-    }
-    .edit-link {
-      color: #0066cc;
-      text-decoration: none;
-      font-weight: bold;
-    }
-    .edit-link:hover {
-      text-decoration: underline;
-    }
-    details {
-      margin-top: 8px;
-      background: #ffffff;
-      border: 1px solid #e0e0e0;
-      border-radius: 4px;
-      padding: 6px 10px;
-    }
-    summary {
-      font-weight: bold;
-      cursor: pointer;
-      color: #0066cc;
-    }
-  </style>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="platforms.js" defer></script>
+  <script src="app.js" defer></script>
 </head>
+<body data-page="games">
+  <header class="masthead">
+    <div class="masthead-bar">
+      <div class="wrap">
+        <div>
+          <p class="kicker">Video game database</p>
+          <h1 class="brand"><span class="my">My</span><span class="name">GameVault</span></h1>
+        </div>
+        <p class="stat" aria-live="polite">
+          <strong id="count-num">0</strong>
+          <span id="count-label">games</span>
+        </p>
+      </div>
+    </div>
+  </header>
 
-<body>
-  <h1>MyGameVault</h1>
-
-  <h3>Add a Game Manually</h3>
-  <input id="title" placeholder="Title" />
-  <input id="platform" placeholder="Platform (e.g. PC, PS5)" />
-  <input id="rating" placeholder="Rating (e.g. 4.5)" />
-  <button onclick="addGame()">Add Game</button>
-
-  <h3>My Saved Games</h3>
-  <ul id="games"></ul>
-
-  <h3>Look Up Online</h3>
-  <input id="search" placeholder="Game title to search..." />
-  <button onclick="lookup()">Search Online</button>
-  <ul id="results"></ul>
-
-  <script>
-    function getYear(released) {
-      return released && released !== "N/A" ? released.split("-")[0] : "N/A";
-    }
-
-    // 1. FETCH & DISPLAY SAVED GAMES (WITH EDIT & DELETE)
-    async function loadGames() {
-      try {
-        const res = await fetch("/api/games");
-        const games = await res.json();
-        let html = "";
-
-        if (games.length === 0) {
-          document.getElementById("games").innerHTML = "<li>No games saved yet.</li>";
-          return;
-        }
-
-        for (let i = 0; i < games.length; i++) {
-          const g = games[i];
-          const imageSrc = g.image || "https://via.placeholder.com/100?text=No+Image";
-          const platformsText = Array.isArray(g.platforms) && g.platforms.length > 0 
-            ? g.platforms.join(", ") 
-            : "N/A";
-          const genresText = Array.isArray(g.genres) && g.genres.length > 0 
-            ? g.genres.join(", ") 
-            : "N/A";
-
-          html += `
-            <li class="game-item">
-              <img src="${imageSrc}" class="game-thumb" alt="${g.title}" />
-              <div class="game-info">
-                <strong>${g.title}</strong> -  ${g.rating || "N/A"} (${getYear(g.released)})
-                
-                <div class="actions">
-                  <!-- Edit link passing the game ID -->
-                  <a class="edit-link" href="edit.html?id=${g.id}">Edit</a>
-                  <!-- Delete button triggering backend delete -->
-                  <button class="btn btn-delete" onclick="deleteGame('${g.id}')">Delete</button>
-                </div>
-
-                <details>
-                  <summary>Show Details</summary>
-                  <div class="details-content">
-                    <p><strong>Release Date:</strong> ${g.released || "N/A"}</p>
-                    <p><strong>Platforms:</strong> ${platformsText}</p>
-                    <p><strong>Genres:</strong> ${genresText}</p>
-                  </div>
-                </details>
+  <div class="shell">
+    <main class="layout">
+      <section class="panel area-lookup" style="--i: 2" aria-labelledby="lookup-heading">
+        <div class="panel-bar">
+          <h2 id="lookup-heading">Look up online</h2>
+        </div>
+        <div class="panel-body">
+          <p class="hint">Search the RAWG game database and add a match to your collection.</p>
+          <form id="lookup-form" novalidate>
+            <div class="field">
+              <label for="search">Game title</label>
+              <div class="inline-form">
+                <input id="search" name="search" placeholder="Cyberpunk 2077" autocomplete="off" />
+                <button class="btn btn-ghost" type="submit">Search</button>
               </div>
-            </li>
-          `;
-        }
-
-        document.getElementById("games").innerHTML = html;
-      } catch (err) {
-        console.error("Error loading games:", err);
-      }
-    }
-
-    // 2. ADD GAME MANUALLY
-    async function addGame() {
-      const title = document.getElementById("title").value;
-      if (!title) return alert("Please enter a game title.");
-
-      const game = {
-        title: title,
-        platforms: [document.getElementById("platform").value],
-        rating: document.getElementById("rating").value,
-      };
-
-      await fetch("/api/games", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(game),
-      });
-
-      document.getElementById("title").value = "";
-      document.getElementById("platform").value = "";
-      document.getElementById("rating").value = "";
-
-      loadGames();
-    }
-
-    // 3. DELETE GAME FUNCTION
-    async function deleteGame(id) {
-      if (!confirm("Are you sure you want to delete this game?")) return;
-
-      try {
-        const res = await fetch("/api/games/" + id, { method: "DELETE" });
-        if (res.ok) {
-          loadGames(); // Refresh the list after deleting
-        } else {
-          alert("Failed to delete game");
-        }
-      } catch (err) {
-        console.error("Delete error:", err);
-      }
-    }
-
-    // 4. SEARCH RAWG ONLINE
-    async function lookup() {
-      const title = document.getElementById("search").value;
-      if (!title) return;
-
-      const res = await fetch("/api/lookup?title=" + encodeURIComponent(title));
-      const results = await res.json();
-      let html = "";
-
-      for (let i = 0; i < results.length; i++) {
-        const r = results[i];
-        const imageSrc = r.image || "https://via.placeholder.com/100?text=No+Image";
-        const platformsText = Array.isArray(r.platforms) && r.platforms.length > 0 
-          ? r.platforms.join(", ") 
-          : "N/A";
-        const genresText = Array.isArray(r.genres) && r.genres.length > 0 
-          ? r.genres.join(", ") 
-          : "N/A";
-
-        const safeGameData = JSON.stringify(r).replace(/'/g, "&apos;");
-
-        html += `
-          <li class="game-item">
-            <img src="${imageSrc}" class="game-thumb" alt="${r.title}" />
-            <div class="game-info">
-              <strong>${r.title}</strong> -  ${r.rating} (${getYear(r.released)})
-              <br/>
-              <button class="btn" onclick='saveFromLookup(${safeGameData})'>+ Save Game</button>
-
-              <details>
-                <summary>Show Details</summary>
-                <div class="details-content">
-                  <p><strong>Release Date:</strong> ${r.released}</p>
-                  <p><strong>Platforms:</strong> ${platformsText}</p>
-                  <p><strong>Genres:</strong> ${genresText}</p>
-                </div>
-              </details>
             </div>
-          </li>
-        `;
-      }
+            <p class="form-error" role="alert" hidden></p>
+          </form>
+          <p id="lookup-status" class="status" role="status"></p>
+          <ul id="results" class="results"></ul>
+        </div>
+      </section>
 
-      document.getElementById("results").innerHTML = html;
-    }
+      <section class="panel area-add" style="--i: 3" aria-labelledby="add-heading">
+        <div class="panel-bar bar-amber">
+          <h2 id="add-heading">Add a game</h2>
+        </div>
+        <div class="panel-body">
+          <p class="hint">Fill in the details, or find a game online above.</p>
+          <form id="add-form" novalidate>
+            <div class="field">
+              <label for="title">Title</label>
+              <input id="title" name="title" placeholder="Hollow Knight" autocomplete="off" />
+            </div>
+            <fieldset class="platform-picker">
+              <legend>Platforms</legend>
+              <div class="platform-grid"></div>
+            </fieldset>
+            <div class="field-row">
+              <div class="field">
+                <label for="rating">Rating (0-5)</label>
+                <input id="rating" name="rating" placeholder="4.5" inputmode="decimal" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label for="year">Year</label>
+                <input id="year" name="year" placeholder="2017" inputmode="numeric" autocomplete="off" />
+              </div>
+            </div>
+            <p class="form-error" role="alert" hidden></p>
+            <button class="btn btn-primary btn-block" type="submit">Add game</button>
+          </form>
+        </div>
+      </section>
 
-    // SAVE GAME FROM LOOKUP
-    async function saveFromLookup(gameData) {
-      await fetch("/api/games", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(gameData),
-      });
+      <section class="panel area-games" style="--i: 1" aria-labelledby="games-heading">
+        <div class="panel-bar">
+          <h2 id="games-heading">My games</h2>
+          <div class="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" aria-hidden="true"><circle cx="10" cy="10" r="6.5" /><path d="M15 15l6 6" /></svg>
+            <input id="filter" type="search" placeholder="Filter your games" aria-label="Filter your games" autocomplete="off" />
+          </div>
+        </div>
+        <div class="panel-body">
+          <ul id="games" class="games" aria-busy="true">
+            <li class="skeleton"></li>
+            <li class="skeleton"></li>
+            <li class="skeleton"></li>
+          </ul>
+          <div id="games-empty" class="empty" hidden>
+            <svg class="icon empty-mark" aria-hidden="true"><use href="icons.svg#gamepad" /></svg>
+            <h3></h3>
+            <p></p>
+            <button class="btn btn-primary" type="button" hidden>Try again</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
 
-      loadGames();
-    }
-
-    // Load initial saved games list on page load
-    loadGames();
-  </script>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
 </body>
 </html>

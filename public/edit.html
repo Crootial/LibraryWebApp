@@ -2,74 +2,74 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Edit Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#14213d" />
+  <title>Edit game · MyGameVault</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="platforms.js" defer></script>
+  <script src="app.js" defer></script>
 </head>
-<body>
-  <h1>Edit Game</h1>
-  
-  <label for="title">Title:</label><br />
-  <input id="title" placeholder="Title" /><br /><br />
+<body data-page="edit">
+  <header class="masthead">
+    <div class="masthead-bar">
+      <div class="wrap wrap-narrow">
+        <div>
+          <p class="kicker">Editing a game</p>
+          <a class="brand" href="index.html" aria-label="MyGameVault, back to your games"><span class="my">My</span><span class="name">GameVault</span></a>
+        </div>
+      </div>
+    </div>
+  </header>
 
-  <label for="platform">Platforms (comma-separated):</label><br />
-  <input id="platform" placeholder="e.g. PC, PS5, Xbox" /><br /><br />
+  <div class="shell shell-narrow">
+    <a class="back" href="index.html">&larr; Back to games</a>
 
-  <label for="rating">Rating:</label><br />
-  <input id="rating" placeholder="Rating (e.g. 4.5)" /><br /><br />
+    <section class="panel edit-card" aria-labelledby="edit-heading">
+      <div class="panel-bar bar-amber">
+        <p class="bar-title">Editing</p>
+      </div>
+      <div class="panel-body">
+        <h1 id="edit-heading"><span id="edit-name">Edit game</span></h1>
 
-  <button onclick="saveGame()">Save</button>
-  <a href="index.html">Cancel</a>
+        <form id="edit-form" novalidate hidden>
+          <div class="field">
+            <label for="title">Title</label>
+            <input id="title" name="title" placeholder="Title" autocomplete="off" />
+          </div>
+          <fieldset class="platform-picker">
+            <legend>Platforms</legend>
+            <div class="platform-grid"></div>
+          </fieldset>
+          <div class="field-row">
+            <div class="field">
+              <label for="rating">Rating (0-5)</label>
+              <input id="rating" name="rating" placeholder="4.5" inputmode="decimal" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="year">Year</label>
+              <input id="year" name="year" placeholder="Year" inputmode="numeric" autocomplete="off" />
+            </div>
+          </div>
+          <p class="form-error" role="alert" hidden></p>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Save changes</button>
+            <a class="btn btn-ghost" href="index.html">Cancel</a>
+          </div>
+        </form>
 
-  <script>
-    // 1. Read the game ID from URL query parameters (e.g., edit.html?id=1711420800000)
-    const id = new URLSearchParams(location.search).get("id");
+        <div id="edit-state" class="empty">
+          <svg class="icon empty-mark" aria-hidden="true"><use href="icons.svg#gamepad" /></svg>
+          <h3>Loading&hellip;</h3>
+          <p>Fetching this game from your collection.</p>
+        </div>
+      </div>
+    </section>
+  </div>
 
-    // 2. Load all games, find the matching ID, and populate input fields
-    async function loadGame() {
-      if (!id) return;
-
-      const res = await fetch("/api/games");
-      const games = await res.json();
-
-      for (let i = 0; i < games.length; i++) {
-        if (games[i].id == id) {
-          const g = games[i];
-          document.getElementById("title").value = g.title || "";
-          
-          // Format array of platforms into a readable comma-separated string
-          document.getElementById("platform").value = Array.isArray(g.platforms) 
-            ? g.platforms.join(", ") 
-            : (g.platforms || "");
-            
-          document.getElementById("rating").value = g.rating || "";
-          break;
-        }
-      }  
-    }
-
-    // 3. Send updated values via PUT request and redirect back to index.html
-    async function saveGame() {
-      // Split input string into an array of platforms
-      const platformInput = document.getElementById("platform").value;
-      const platformsArray = platformInput
-        ? platformInput.split(",").map(p => p.trim())
-        : [];
-
-      const updatedGame = {
-        title: document.getElementById("title").value,
-        platforms: platformsArray,
-        rating: document.getElementById("rating").value,
-      };
-
-      await fetch("/api/games/" + id, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedGame),
-      });
-
-      window.location.href = "index.html";
-    }
-
-    loadGame();
-  </script>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
 </body>
 </html>

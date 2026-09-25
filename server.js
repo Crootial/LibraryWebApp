@@ -102,9 +102,10 @@ app.get("/api/lookup", async (req, res) => {
       released: game.released || "N/A", 
       rating: game.rating || "N/A",
       image: game.background_image || null,
-      platforms: game.platforms 
+      platforms: game.platforms
         ? game.platforms.map((p) => p.platform.name)
         : [],
+      genres: game.genres ? game.genres.map((g) => g.name) : [],
     }));
 
     res.json(results);
