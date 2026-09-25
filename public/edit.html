@@ -1,46 +1,75 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
- <meta charset="UTF-8" />
- <title>Edit book</title>
+  <meta charset="UTF-8" />
+  <title>Edit Game</title>
 </head>
 <body>
-    <h1>Edit book</h1>
-    <input id="title" placeholder="Title" /><br /><br />
-    <input id="author" placeholder="Author" /><br /><br />
-    <input id="year" placeholder="Year" /><br /><br />
-    <button onclick="saveBook()">Save</button>
-    <a href="index.html">Cancel</a>
- <script>
-    // Read the id from the web address, for example edit.html?id=5
+  <h1>Edit Game</h1>
+  
+  <label for="title">Title:</label><br />
+  <input id="title" placeholder="Title" /><br /><br />
+
+  <label for="platform">Platforms (comma-separated):</label><br />
+  <input id="platform" placeholder="e.g. PC, PS5, Xbox" /><br /><br />
+
+  <label for="rating">Rating:</label><br />
+  <input id="rating" placeholder="Rating (e.g. 4.5)" /><br /><br />
+
+  <button onclick="saveGame()">Save</button>
+  <a href="index.html">Cancel</a>
+
+  <script>
+    // 1. Read the game ID from URL query parameters (e.g., edit.html?id=1711420800000)
     const id = new URLSearchParams(location.search).get("id");
-    // Load all books, find this one, and fill the boxes.
-    async function loadBook() {
-        const res = await fetch("/api/books");
-        const books = await res.json();
-        for (let i = 0; i < books.length; i++) {
-            if (books[i].id == id) {
-                document.getElementById("title").value = books[i].title;
-                document.getElementById("author").value = books[i].author;
-                document.getElementById("year").value = books[i].year;
-            }
-        }  
+
+    // 2. Load all games, find the matching ID, and populate input fields
+    async function loadGame() {
+      if (!id) return;
+
+      const res = await fetch("/api/games");
+      const games = await res.json();
+
+      for (let i = 0; i < games.length; i++) {
+        if (games[i].id == id) {
+          const g = games[i];
+          document.getElementById("title").value = g.title || "";
+          
+          // Format array of platforms into a readable comma-separated string
+          document.getElementById("platform").value = Array.isArray(g.platforms) 
+            ? g.platforms.join(", ") 
+            : (g.platforms || "");
+            
+          document.getElementById("rating").value = g.rating || "";
+          break;
+        }
+      }  
     }
- // Send the new values, then go back to the list.
- async function saveBook() {
-    const book = {
+
+    // 3. Send updated values via PUT request and redirect back to index.html
+    async function saveGame() {
+      // Split input string into an array of platforms
+      const platformInput = document.getElementById("platform").value;
+      const platformsArray = platformInput
+        ? platformInput.split(",").map(p => p.trim())
+        : [];
+
+      const updatedGame = {
         title: document.getElementById("title").value,
-        author: document.getElementById("author").value,
-        year: document.getElementById("year").value,
-    };
-    await fetch("/api/books/" + id, {
+        platforms: platformsArray,
+        rating: document.getElementById("rating").value,
+      };
+
+      await fetch("/api/games/" + id, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(book),
-    });
-    window.location.href = "index.html";
- }
- loadBook();
- </script>
+        body: JSON.stringify(updatedGame),
+      });
+
+      window.location.href = "index.html";
+    }
+
+    loadGame();
+  </script>
 </body>
 </html>
