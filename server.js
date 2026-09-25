@@ -133,10 +133,6 @@ app.get("/api/lookup/:id", async (req, res) => {
     });
     const game = response.data;
 
-    // The description can run to thousands of characters, so keep the start of it.
-    const text = game.description_raw || "";
-    const description = text.length > 1200 ? text.slice(0, 1200).replace(/\s+\S*$/, "") + "…" : text;
-
     res.json({
       developers: (game.developers || []).map((d) => d.name),
       publishers: (game.publishers || []).map((p) => p.name),
@@ -144,7 +140,6 @@ app.get("/api/lookup/:id", async (req, res) => {
       esrb: game.esrb_rating ? game.esrb_rating.name : null,
       metacritic: game.metacritic || null,
       playtime: game.playtime || null,
-      description: description || null,
     });
   } catch (error) {
     if (error.response?.status === 404) {

@@ -188,9 +188,15 @@ function ratingChip(rating) {
 // request is remembered, so opening the same game twice, or in two places, asks RAWG only once.
 const detailsCache = new Map();
 
+// The parts of RAWG's page that the dropdown shows and a game keeps. A key the server leaves out is
+// filled with null, so a game that has been looked up always holds all of them. Anything else a
+// server sends, such as a description, is ignored rather than saved.
+const DETAIL_KEYS = ["developers", "publishers", "website", "esrb", "metacritic", "playtime"];
+const pickDetails = (extra) => Object.fromEntries(DETAIL_KEYS.map((key) => [key, extra?.[key] ?? null]));
+
 function fetchDetails(rawgId) {
   if (!detailsCache.has(rawgId)) {
-    const request = api("/api/lookup/" + encodeURIComponent(rawgId));
+    const request = api("/api/lookup/" + encodeURIComponent(rawgId)).then(pickDetails);
     request.catch(() => detailsCache.delete(rawgId)); // a failed request can be tried again
     detailsCache.set(rawgId, request);
   }
@@ -203,8 +209,10 @@ const listOf = (value) =>
     .map((name) => String(name ?? "").trim())
     .filter(Boolean);
 
-// A saved game has had its RAWG details fetched once it has a description, even an empty one.
-const detailsFetched = (game) => game.description !== undefined;
+// A saved game has had its RAWG details fetched once it holds the age rating. The server always
+// sends that, as null for a game nobody has rated, so it shows a lookup happened even when RAWG
+// had little to add.
+const detailsFetched = (game) => game.esrb !== undefined;
 
 // Fill in only what the game doesn't have yet. Its own values win, since someone may have typed
 // a developer in by hand.
@@ -256,24 +264,14 @@ function fullPlatformChip(name) {
   );
 }
 
-// The game's description, cut to a few lines with a button to read the rest.
-function aboutItem(text) {
-  const paragraph = el("p", { class: "detail-about clamped", text });
-  if (text.length <= 280) return detailItem("About", paragraph, true);
-  const toggle = el("button", { class: "text-link", type: "button", text: "Read more", "aria-expanded": "false" });
-  toggle.addEventListener("click", () => {
-    const expand = paragraph.classList.contains("clamped");
-    paragraph.classList.toggle("clamped", !expand);
-    toggle.textContent = expand ? "Show less" : "Read more";
-    toggle.setAttribute("aria-expanded", String(expand));
-  });
-  return detailItem("About", [paragraph, toggle], true);
-}
-
 // The rows of a game's details, worded like the plain first version of the page: Release Date,
 // Genres and Platforms, with "N/A" for a game that has none. Those come from the saved game
-// itself, so they show on any machine, even one that can't reach RAWG. Developer and publisher
-// appear once they are known (`credits`), and the other rows only when there is something to say.
+// itself, so they show on any machine, even one that can't reach RAWG.
+//
+// The rows come in three groups, so the second always sits on a row of its own:
+//   1. release date, genres and the ratings (age rating, Metacritic, rating, playtime)
+//   2. developer and publisher, under the ratings. They appear once they are known (`credits`)
+//   3. platforms and website
 function detailList(info, { credits = true } = {}) {
   const developers = listOf(info.developers);
   const publishers = listOf(info.publishers);
@@ -281,21 +279,28 @@ function detailList(info, { credits = true } = {}) {
   const rating = ratingOf(info);
   const platforms = distinct(platformNames(info));
   const site = websiteLink(info.website);
-  const about = typeof info.description === "string" ? info.description.trim() : "";
-  return el("dl", { class: "detail-list" },
-    credits ? detailItem("Developer", developers.join(" · ") || "N/A") : null,
-    credits ? detailItem("Publisher", publishers.join(" · ") || "N/A") : null,
-    detailItem("Release Date", formatDate(info.released) || "N/A"),
-    detailItem("Genres", genres.join(" · ") || "N/A"),
-    info.esrb ? detailItem("Age rating", info.esrb) : null,
-    info.metacritic ? detailItem("Metacritic", String(info.metacritic)) : null,
-    rating ? detailItem("Rating", rating.toFixed(1) + " / 5") : null,
-    info.playtime ? detailItem("Average playtime", info.playtime + " hours") : null,
-    detailItem("Platforms",
-      platforms.length ? el("span", { class: "detail-chips" }, ...platforms.map(fullPlatformChip)) : "N/A",
-      true),
-    site ? detailItem("Website", site, true) : null,
-    about ? aboutItem(about) : null,
+  const group = (...items) => el("dl", { class: "detail-list" }, ...items);
+  return el("div", { class: "detail-groups" },
+    group(
+      detailItem("Release Date", formatDate(info.released) || "N/A"),
+      detailItem("Genres", genres.join(" · ") || "N/A"),
+      info.esrb ? detailItem("Age rating", info.esrb) : null,
+      info.metacritic ? detailItem("Metacritic", String(info.metacritic)) : null,
+      rating ? detailItem("Rating", rating.toFixed(1) + " / 5") : null,
+      info.playtime ? detailItem("Average playtime", info.playtime + " hours") : null,
+    ),
+    credits
+      ? group(
+          detailItem("Developer", developers.join(" · ") || "N/A"),
+          detailItem("Publisher", publishers.join(" · ") || "N/A"),
+        )
+      : null,
+    group(
+      detailItem("Platforms",
+        platforms.length ? el("span", { class: "detail-chips" }, ...platforms.map(fullPlatformChip)) : "N/A",
+        true),
+      site ? detailItem("Website", site, true) : null,
+    ),
   );
 }
 

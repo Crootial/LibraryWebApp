@@ -356,16 +356,6 @@ a.brand:focus-visible {
   outline-offset: 2px;
 }
 
-/* The same link look on a button, for actions that don't go anywhere, like "Read more". */
-button.text-link {
-  padding: 0;
-  font: inherit;
-  font-weight: 800;
-  background: none;
-  border: 0;
-  cursor: pointer;
-}
-
 /* ---------- Console icons ---------- */
 
 /* The icons live in icons.svg and take their colour from the text around them.
@@ -1016,8 +1006,15 @@ input[aria-invalid="true"]:focus-visible {
   animation: drop 0.2s ease-out backwards;
 }
 
-/* The facts sit in as many columns as fit. Long ones (platforms, website, the description)
-   take a whole row. */
+/* The facts come in groups stacked one under another: the release and ratings, then the
+   developer and publisher, then the platforms and website. */
+.detail-groups {
+  display: grid;
+  gap: 16px;
+}
+
+/* Within a group the facts sit in as many columns as fit. Long ones (platforms, website) take a
+   whole row. */
 .detail-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -1058,32 +1055,13 @@ input[aria-invalid="true"]:focus-visible {
   max-width: none;
 }
 
-.detail-about {
-  margin: 0;
-  font-weight: 500;
-  line-height: 1.55;
-}
-
-.detail-about.clamped {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
-  line-clamp: 4;
-  overflow: hidden;
-}
-
-.detail-about + .text-link {
-  margin-top: 6px;
-  font-size: 0.85rem;
-}
-
 .more-status {
   margin: 0;
   font-weight: 700;
   color: var(--navy);
 }
 
-.detail-list + .more-status {
+.detail-groups + .more-status {
   margin-top: 16px;
 }
 
