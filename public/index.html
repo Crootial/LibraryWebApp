@@ -1,66 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
- <meta charset="UTF-8" />
- <title>MyLibrary</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#14213d" />
+  <title>MyGames</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="app.js" defer></script>
 </head>
+<body data-page="games">
+  <header class="masthead">
+    <div class="masthead-bar">
+      <div class="wrap">
+        <div>
+          <p class="kicker">Video game database</p>
+          <h1 class="brand"><span class="my">My</span><span class="name">Games</span></h1>
+        </div>
+        <p class="stat" aria-live="polite">
+          <strong id="count-num">0</strong>
+          <span id="count-label">games</span>
+        </p>
+      </div>
+    </div>
+  </header>
 
-<body>
-    <h1>MyLibrary</h1>
-    <h3>Add a book</h3>
-    <input id="title" placeholder="Title" />
-    <input id="author" placeholder="Author" />
-    <input id="year" placeholder="Year" />
-    <button onclick="addBook()">Add book</button>
-    <h3>My books</h3>
-    <ul id="books"></ul>
-    <h3>Look up online</h3>
-    <input id="search" placeholder="Title to search" />
-    <button onclick="lookup()">Search online</button>
-    <ul id="results"></ul>
-    <script>
- async function loadBooks() {
-        const res = await fetch("/api/books");
-        const books = await res.json();
-        let html = "";
-    for (let i = 0; i < books.length; i++) {
-        const b = books[i];
-            html += "<li>" + b.title + " by " + b.author + " (" + b.year + ") ";
-            html += "<a href='edit.html?id=" + b.id + "'>Edit</a> ";
-            html += "<button onclick='deleteBook(" + b.id + ")'>Delete</button>";
-            html += "</li>";
-        }
-    document.getElementById("books").innerHTML = html;
- }
- async function addBook() {
-     const book = {
-        title: document.getElementById("title").value,
-        author: document.getElementById("author").value,
-        year: document.getElementById("year").value,
-    };
-    await fetch("/api/books", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(book),
-    });
-    loadBooks();
- }
- async function deleteBook(id) {
-    await fetch("/api/books/" + id, { method: "DELETE" });
-    loadBooks();
- }
- async function lookup() {
-        const title = document.getElementById("search").value;
-        const res = await fetch("/api/lookup?title=" + title);
-        const results = await res.json();
-        let html = "";
-        for (let i = 0; i < results.length; i++) {
-        const r = results[i];
-        html += "<li>" + r.title + " by " + r.author + " (" + r.year + ")</li>";
-    }
-    document.getElementById("results").innerHTML = html;
- }
- loadBooks();
- </script>
+  <div class="shell">
+    <main class="layout">
+      <section class="panel area-games" style="--i: 1" aria-labelledby="games-heading">
+        <div class="panel-bar">
+          <h2 id="games-heading">My games</h2>
+          <div class="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" aria-hidden="true"><circle cx="10" cy="10" r="6.5" /><path d="M15 15l6 6" /></svg>
+            <input id="filter" type="search" placeholder="Filter your games" aria-label="Filter your games" autocomplete="off" />
+          </div>
+        </div>
+        <div class="panel-body">
+          <ul id="games" class="games" aria-busy="true">
+            <li class="skeleton"></li>
+            <li class="skeleton"></li>
+            <li class="skeleton"></li>
+          </ul>
+          <div id="games-empty" class="empty" hidden>
+            <svg class="icon empty-mark" aria-hidden="true"><use href="icons.svg#gamepad" /></svg>
+            <h3></h3>
+            <p></p>
+            <button class="btn btn-primary" type="button" hidden>Try again</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel area-add" style="--i: 2" aria-labelledby="add-heading">
+        <div class="panel-bar bar-amber">
+          <h2 id="add-heading">Add a game</h2>
+        </div>
+        <div class="panel-body">
+          <p class="hint">Fill in the details, or find a game online below.</p>
+          <form id="add-form" novalidate>
+            <div class="field">
+              <label for="title">Title</label>
+              <input id="title" name="title" placeholder="Hollow Knight" autocomplete="off" />
+            </div>
+            <fieldset class="platform-picker" disabled>
+              <legend>Platform</legend>
+              <div class="platform-grid"></div>
+            </fieldset>
+            <div class="field-row">
+              <div class="field">
+                <label for="developer">Developer</label>
+                <input id="developer" name="developer" placeholder="Team Cherry" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label for="year">Year</label>
+                <input id="year" name="year" placeholder="2017" inputmode="numeric" autocomplete="off" />
+              </div>
+            </div>
+            <p class="form-error" role="alert" hidden></p>
+            <button class="btn btn-primary btn-block" type="submit">Add game</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="panel area-lookup" style="--i: 3" aria-labelledby="lookup-heading">
+        <div class="panel-bar">
+          <h2 id="lookup-heading">Look up online</h2>
+        </div>
+        <div class="panel-body">
+          <p class="hint">Search Wikidata, then add a match for the platform you play it on.</p>
+          <form id="lookup-form" novalidate>
+            <div class="field">
+              <label for="search">Game title</label>
+              <div class="inline-form">
+                <input id="search" name="search" placeholder="Super Mario Odyssey" autocomplete="off" />
+                <button class="btn btn-ghost" type="submit">Search</button>
+              </div>
+            </div>
+            <p class="form-error" role="alert" hidden></p>
+          </form>
+          <p id="lookup-status" class="status" role="status"></p>
+          <ul id="results" class="results"></ul>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
 </body>
 </html>

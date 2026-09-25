@@ -1,46 +1,74 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
- <meta charset="UTF-8" />
- <title>Edit book</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#14213d" />
+  <title>Edit game · MyGames</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="app.js" defer></script>
 </head>
-<body>
-    <h1>Edit book</h1>
-    <input id="title" placeholder="Title" /><br /><br />
-    <input id="author" placeholder="Author" /><br /><br />
-    <input id="year" placeholder="Year" /><br /><br />
-    <button onclick="saveBook()">Save</button>
-    <a href="index.html">Cancel</a>
- <script>
-    // Read the id from the web address, for example edit.html?id=5
-    const id = new URLSearchParams(location.search).get("id");
-    // Load all books, find this one, and fill the boxes.
-    async function loadBook() {
-        const res = await fetch("/api/books");
-        const books = await res.json();
-        for (let i = 0; i < books.length; i++) {
-            if (books[i].id == id) {
-                document.getElementById("title").value = books[i].title;
-                document.getElementById("author").value = books[i].author;
-                document.getElementById("year").value = books[i].year;
-            }
-        }  
-    }
- // Send the new values, then go back to the list.
- async function saveBook() {
-    const book = {
-        title: document.getElementById("title").value,
-        author: document.getElementById("author").value,
-        year: document.getElementById("year").value,
-    };
-    await fetch("/api/books/" + id, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(book),
-    });
-    window.location.href = "index.html";
- }
- loadBook();
- </script>
+<body data-page="edit">
+  <header class="masthead">
+    <div class="masthead-bar">
+      <div class="wrap wrap-narrow">
+        <div>
+          <p class="kicker">Editing a game</p>
+          <a class="brand" href="index.html" aria-label="MyGames, back to your games"><span class="my">My</span><span class="name">Games</span></a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="shell shell-narrow">
+    <a class="back" href="index.html">&larr; Back to games</a>
+
+    <section class="panel edit-card" aria-labelledby="edit-heading">
+      <div class="panel-bar bar-amber">
+        <p class="bar-title">Editing</p>
+      </div>
+      <div class="panel-body">
+        <h1 id="edit-heading"><span id="edit-name">Edit game</span></h1>
+
+        <form id="edit-form" novalidate hidden>
+          <div class="field">
+            <label for="title">Title</label>
+            <input id="title" name="title" placeholder="Title" autocomplete="off" />
+          </div>
+          <fieldset class="platform-picker" disabled>
+            <legend>Platform</legend>
+            <div class="platform-grid"></div>
+          </fieldset>
+          <div class="field-row">
+            <div class="field">
+              <label for="developer">Developer</label>
+              <input id="developer" name="developer" placeholder="Developer" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="year">Year</label>
+              <input id="year" name="year" placeholder="Year" inputmode="numeric" autocomplete="off" />
+            </div>
+          </div>
+          <p class="form-error" role="alert" hidden></p>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Save changes</button>
+            <a class="btn btn-ghost" href="index.html">Cancel</a>
+          </div>
+        </form>
+
+        <div id="edit-state" class="empty">
+          <svg class="icon empty-mark" aria-hidden="true"><use href="icons.svg#gamepad" /></svg>
+          <h3>Loading&hellip;</h3>
+          <p>Fetching this game from your collection.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
 </body>
 </html>
