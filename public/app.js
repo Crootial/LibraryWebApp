@@ -270,9 +270,11 @@ function aboutItem(text) {
   return detailItem("About", [paragraph, toggle], true);
 }
 
-// The rows of a game's details. Rows for things nobody knows are left out, except the ones that
-// are always worth showing: developer, publisher, release date and platforms.
-function detailList(info) {
+// The rows of a game's details, worded like the plain first version of the page: Release Date,
+// Genres and Platforms, with "N/A" for a game that has none. Those come from the saved game
+// itself, so they show on any machine, even one that can't reach RAWG. Developer and publisher
+// appear once they are known (`credits`), and the other rows only when there is something to say.
+function detailList(info, { credits = true } = {}) {
   const developers = listOf(info.developers);
   const publishers = listOf(info.publishers);
   const genres = genresOf(info);
@@ -281,16 +283,16 @@ function detailList(info) {
   const site = websiteLink(info.website);
   const about = typeof info.description === "string" ? info.description.trim() : "";
   return el("dl", { class: "detail-list" },
-    detailItem("Developer", developers.join(" · ") || "Unknown"),
-    detailItem("Publisher", publishers.join(" · ") || "Unknown"),
-    detailItem("Released", formatDate(info.released) || "Unknown"),
-    genres.length ? detailItem("Genres", genres.join(" · ")) : null,
+    credits ? detailItem("Developer", developers.join(" · ") || "N/A") : null,
+    credits ? detailItem("Publisher", publishers.join(" · ") || "N/A") : null,
+    detailItem("Release Date", formatDate(info.released) || "N/A"),
+    detailItem("Genres", genres.join(" · ") || "N/A"),
     info.esrb ? detailItem("Age rating", info.esrb) : null,
     info.metacritic ? detailItem("Metacritic", String(info.metacritic)) : null,
     rating ? detailItem("Rating", rating.toFixed(1) + " / 5") : null,
     info.playtime ? detailItem("Average playtime", info.playtime + " hours") : null,
     detailItem("Platforms",
-      platforms.length ? el("span", { class: "detail-chips" }, ...platforms.map(fullPlatformChip)) : "Not set",
+      platforms.length ? el("span", { class: "detail-chips" }, ...platforms.map(fullPlatformChip)) : "N/A",
       true),
     site ? detailItem("Website", site, true) : null,
     about ? aboutItem(about) : null,
@@ -305,9 +307,18 @@ function detailList(info) {
 function detailsPanel(game, { isOpen = false, onToggle, onLoaded } = {}) {
   const body = el("div", { class: "more-body" });
   const more = el("details", { class: "more" },
-    el("summary", {}, el("span", { text: "Details" }), icon("chevron")),
+    el("summary", {},
+      el("span", { class: "when-closed", text: "Show Details" }),
+      el("span", { class: "when-open", text: "Hide Details" }),
+      icon("chevron"),
+    ),
     body,
   );
+
+  // A server that wasn't restarted after an update has no details route, and answers 404 with a
+  // plain page rather than a message.
+  const reasonFor = (err) =>
+    /\(404\)/.test(err.message) ? "This server may need updating. Restart it with the latest code." : err.message;
 
   async function fill() {
     // Games added by hand have no RAWG page, and saved ones may already hold their details.
@@ -318,7 +329,16 @@ function detailsPanel(game, { isOpen = false, onToggle, onLoaded } = {}) {
       }
       return;
     }
-    body.replaceChildren(el("p", { class: "more-status loading", role: "status", text: "Loading details" }));
+
+    // Developer, publisher and the other extras need a trip to RAWG. What the saved game already
+    // holds shows straight away, so the dropdown is never empty, and the extras join in when they
+    // arrive. If they never do, everything else stays on show.
+    const credits = game.developers !== undefined || game.publishers !== undefined;
+    const basics = () => detailList(game, { credits });
+    body.replaceChildren(
+      basics(),
+      el("p", { class: "more-status loading", role: "status", text: "Loading developer, publisher and more" }),
+    );
     try {
       const extra = await fetchDetails(game.rawg_id);
       if (onLoaded) onLoaded(extra);
@@ -327,7 +347,8 @@ function detailsPanel(game, { isOpen = false, onToggle, onLoaded } = {}) {
       const retry = el("button", { class: "btn btn-ghost btn-sm", type: "button", text: "Try again" });
       retry.addEventListener("click", fill);
       body.replaceChildren(
-        el("p", { class: "more-status", role: "alert", text: "Couldn't load the details. " + err.message }),
+        basics(),
+        el("p", { class: "more-status", role: "alert", text: "Developer, publisher and more couldn't be loaded. " + reasonFor(err) }),
         retry,
       );
     }

@@ -973,6 +973,12 @@ input[aria-invalid="true"]:focus-visible {
   display: none;
 }
 
+/* The label says what a click will do. */
+.more:not([open]) > summary .when-open,
+.more[open] > summary .when-closed {
+  display: none;
+}
+
 .more > summary:hover {
   background: var(--amber);
 }
@@ -1075,6 +1081,10 @@ input[aria-invalid="true"]:focus-visible {
   margin: 0;
   font-weight: 700;
   color: var(--navy);
+}
+
+.detail-list + .more-status {
+  margin-top: 16px;
 }
 
 .more-status.loading::before {
