@@ -29,9 +29,56 @@
     </div>
   </header>
 
+  <div class="tabbar">
+    <div class="wrap">
+      <div class="tabs" role="tablist" aria-label="Sections">
+        <button class="tab" type="button" role="tab" id="tab-collection" data-tab="collection" aria-controls="panel-collection" aria-selected="true">
+          <svg class="icon" aria-hidden="true"><use href="icons.svg#gamepad" /></svg>
+          <span>My games</span>
+          <span class="tab-count" id="tab-count">0</span>
+        </button>
+        <button class="tab" type="button" role="tab" id="tab-lookup" data-tab="lookup" aria-controls="panel-lookup" aria-selected="false" tabindex="-1">
+          <svg class="icon" aria-hidden="true"><use href="icons.svg#search" /></svg>
+          <span>Look up online</span>
+        </button>
+        <button class="tab" type="button" role="tab" id="tab-add" data-tab="add" aria-controls="panel-add" aria-selected="false" tabindex="-1">
+          <svg class="icon" aria-hidden="true"><use href="icons.svg#plus" /></svg>
+          <span>Add a game</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div class="shell">
-    <main class="layout">
-      <section class="panel area-lookup" style="--i: 2" aria-labelledby="lookup-heading">
+    <main>
+      <section class="panel" id="panel-collection" role="tabpanel" aria-labelledby="tab-collection">
+        <div class="panel-bar">
+          <h2 id="games-heading">My games</h2>
+          <div class="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" aria-hidden="true"><circle cx="10" cy="10" r="6.5" /><path d="M15 15l6 6" /></svg>
+            <input id="filter" type="search" placeholder="Filter your games" aria-label="Filter your games" autocomplete="off" />
+          </div>
+        </div>
+        <div class="panel-body">
+          <ul id="games" class="games" aria-busy="true">
+            <li class="skeleton"></li>
+            <li class="skeleton"></li>
+            <li class="skeleton"></li>
+          </ul>
+          <div id="games-empty" class="empty" hidden>
+            <svg class="icon empty-mark" aria-hidden="true"><use href="icons.svg#gamepad" /></svg>
+            <h3></h3>
+            <p></p>
+            <button class="btn btn-primary" type="button" hidden>Try again</button>
+            <div class="empty-actions" hidden>
+              <a class="btn btn-primary" href="#lookup">Look up online</a>
+              <a class="btn btn-ghost" href="#add">Add a game</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-lookup" role="tabpanel" aria-labelledby="tab-lookup" hidden>
         <div class="panel-bar">
           <h2 id="lookup-heading">Look up online</h2>
         </div>
@@ -52,22 +99,32 @@
         </div>
       </section>
 
-      <section class="panel area-add" style="--i: 3" aria-labelledby="add-heading">
+      <section class="panel" id="panel-add" role="tabpanel" aria-labelledby="tab-add" hidden>
         <div class="panel-bar bar-amber">
           <h2 id="add-heading">Add a game</h2>
         </div>
         <div class="panel-body">
-          <p class="hint">Fill in the details, or find a game online above.</p>
-          <form id="add-form" novalidate>
-            <div class="field">
+          <p class="hint">Fill in the details yourself, or <a class="text-link" href="#lookup">look a game up online</a> instead.</p>
+          <form id="add-form" class="form-grid" novalidate>
+            <div class="field fg-title">
               <label for="title">Title</label>
               <input id="title" name="title" placeholder="Hollow Knight" autocomplete="off" />
             </div>
-            <fieldset class="platform-picker">
+            <div class="field-row fg-people">
+              <div class="field">
+                <label for="developer">Developer</label>
+                <input id="developer" name="developer" placeholder="Team Cherry" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label for="publisher">Publisher</label>
+                <input id="publisher" name="publisher" placeholder="Team Cherry" autocomplete="off" />
+              </div>
+            </div>
+            <fieldset class="platform-picker fg-picker">
               <legend>Platforms</legend>
-              <div class="platform-grid"></div>
+              <div class="platform-frame"><div class="platform-grid"></div></div>
             </fieldset>
-            <div class="field-row">
+            <div class="field-row fg-meta">
               <div class="field">
                 <label for="rating">Rating (0-5)</label>
                 <input id="rating" name="rating" placeholder="4.5" inputmode="decimal" autocomplete="off" />
@@ -77,32 +134,11 @@
                 <input id="year" name="year" placeholder="2017" inputmode="numeric" autocomplete="off" />
               </div>
             </div>
-            <p class="form-error" role="alert" hidden></p>
-            <button class="btn btn-primary btn-block" type="submit">Add game</button>
+            <div class="fg-foot">
+              <p class="form-error" role="alert" hidden></p>
+              <button class="btn btn-primary btn-block" type="submit">Add game</button>
+            </div>
           </form>
-        </div>
-      </section>
-
-      <section class="panel area-games" style="--i: 1" aria-labelledby="games-heading">
-        <div class="panel-bar">
-          <h2 id="games-heading">My games</h2>
-          <div class="search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" aria-hidden="true"><circle cx="10" cy="10" r="6.5" /><path d="M15 15l6 6" /></svg>
-            <input id="filter" type="search" placeholder="Filter your games" aria-label="Filter your games" autocomplete="off" />
-          </div>
-        </div>
-        <div class="panel-body">
-          <ul id="games" class="games" aria-busy="true">
-            <li class="skeleton"></li>
-            <li class="skeleton"></li>
-            <li class="skeleton"></li>
-          </ul>
-          <div id="games-empty" class="empty" hidden>
-            <svg class="icon empty-mark" aria-hidden="true"><use href="icons.svg#gamepad" /></svg>
-            <h3></h3>
-            <p></p>
-            <button class="btn btn-primary" type="button" hidden>Try again</button>
-          </div>
         </div>
       </section>
     </main>

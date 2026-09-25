@@ -25,6 +25,25 @@
     </div>
   </header>
 
+  <nav class="tabbar" aria-label="Sections">
+    <div class="wrap wrap-narrow">
+      <div class="tabs">
+        <a class="tab" href="index.html#collection">
+          <svg class="icon" aria-hidden="true"><use href="icons.svg#gamepad" /></svg>
+          <span>My games</span>
+        </a>
+        <a class="tab" href="index.html#lookup">
+          <svg class="icon" aria-hidden="true"><use href="icons.svg#search" /></svg>
+          <span>Look up online</span>
+        </a>
+        <a class="tab" href="index.html#add">
+          <svg class="icon" aria-hidden="true"><use href="icons.svg#plus" /></svg>
+          <span>Add a game</span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
   <div class="shell shell-narrow">
     <a class="back" href="index.html">&larr; Back to games</a>
 
@@ -40,9 +59,19 @@
             <label for="title">Title</label>
             <input id="title" name="title" placeholder="Title" autocomplete="off" />
           </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="developer">Developer</label>
+              <input id="developer" name="developer" placeholder="Developer" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="publisher">Publisher</label>
+              <input id="publisher" name="publisher" placeholder="Publisher" autocomplete="off" />
+            </div>
+          </div>
           <fieldset class="platform-picker">
             <legend>Platforms</legend>
-            <div class="platform-grid"></div>
+            <div class="platform-frame"><div class="platform-grid"></div></div>
           </fieldset>
           <div class="field-row">
             <div class="field">

@@ -115,6 +115,46 @@ app.get("/api/lookup", async (req, res) => {
   }
 });
 
+// INTEGRATION - Get the details of one RAWG game: developers, publishers, age rating and more.
+// The search results above don't carry these, only RAWG's page for a single game does.
+// Example request: GET http://localhost:3000/api/lookup/41494
+app.get("/api/lookup/:id", async (req, res) => {
+  const { id } = req.params;
+
+  // RAWG ids are whole numbers. RAWG also accepts names in this spot, so only numbers go through.
+  if (!/^\d+$/.test(id)) {
+    return res.status(400).json({ error: "Game id must be a number" });
+  }
+
+  try {
+    const response = await axios.get("https://api.rawg.io/api/games/" + id, {
+      params: { key: RAWG_API_KEY },
+      timeout: 10000,
+    });
+    const game = response.data;
+
+    // The description can run to thousands of characters, so keep the start of it.
+    const text = game.description_raw || "";
+    const description = text.length > 1200 ? text.slice(0, 1200).replace(/\s+\S*$/, "") + "…" : text;
+
+    res.json({
+      developers: (game.developers || []).map((d) => d.name),
+      publishers: (game.publishers || []).map((p) => p.name),
+      website: game.website || null,
+      esrb: game.esrb_rating ? game.esrb_rating.name : null,
+      metacritic: game.metacritic || null,
+      playtime: game.playtime || null,
+      description: description || null,
+    });
+  } catch (error) {
+    if (error.response?.status === 404) {
+      return res.status(404).json({ error: "Game not found on RAWG" });
+    }
+    console.error("RAWG Details Error:", error.response?.data || error.message);
+    res.status(500).json({ error: "Failed to fetch game details from RAWG service" });
+  }
+});
+
 app.listen(3000, () => {
   console.log("Server running at http://localhost:3000");
 });

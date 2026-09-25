@@ -181,6 +181,175 @@ function ratingChip(rating) {
   );
 }
 
+// ---------- Game details (the dropdown on a card) ----------
+
+// RAWG's search results leave out the developer, the publisher and more. The backend serves those
+// from RAWG's page for a single game, so a card fetches them the first time it is opened. The
+// request is remembered, so opening the same game twice, or in two places, asks RAWG only once.
+const detailsCache = new Map();
+
+function fetchDetails(rawgId) {
+  if (!detailsCache.has(rawgId)) {
+    const request = api("/api/lookup/" + encodeURIComponent(rawgId));
+    request.catch(() => detailsCache.delete(rawgId)); // a failed request can be tried again
+    detailsCache.set(rawgId, request);
+  }
+  return detailsCache.get(rawgId);
+}
+
+// Developers and publishers are saved as lists of names. A box typed by hand may hold "A, B".
+const listOf = (value) =>
+  (Array.isArray(value) ? value : String(value ?? "").split(","))
+    .map((name) => String(name ?? "").trim())
+    .filter(Boolean);
+
+// A saved game has had its RAWG details fetched once it has a description, even an empty one.
+const detailsFetched = (game) => game.description !== undefined;
+
+// Fill in only what the game doesn't have yet. Its own values win, since someone may have typed
+// a developer in by hand.
+function withDetails(game, extra) {
+  const merged = { ...game };
+  for (const [key, value] of Object.entries(extra || {})) {
+    if (merged[key] === undefined) merged[key] = value;
+  }
+  return merged;
+}
+
+const distinct = (names) =>
+  names.filter((name, i) => names.findIndex((n) => n.toLowerCase() === name.toLowerCase()) === i);
+
+// "2020-12-10" becomes "December 10, 2020". A bare year stays a year.
+function formatDate(released) {
+  const text = String(released ?? "").trim();
+  const full = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);
+  if (full) {
+    const date = new Date(Number(full[1]), Number(full[2]) - 1, Number(full[3]));
+    if (!Number.isNaN(date.getTime())) {
+      return date.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+    }
+  }
+  const year = yearOf({ released: text });
+  return year ? String(year) : null;
+}
+
+function websiteLink(url) {
+  if (typeof url !== "string" || !/^https?:\/\//i.test(url)) return null;
+  let host = url;
+  try { host = new URL(url).hostname.replace(/^www\./, ""); } catch {}
+  return el("a", { class: "text-link", href: url, target: "_blank", rel: "noopener noreferrer", text: host });
+}
+
+function detailItem(label, content, wide = false) {
+  return el("div", { class: wide ? "detail detail-wide" : "detail" },
+    el("dt", { text: label }),
+    el("dd", {}, ...[].concat(content)),
+  );
+}
+
+// A platform with its full name, as RAWG spells it, rather than the short label on a card.
+function fullPlatformChip(name) {
+  const platform = platformFor(name) || platformById("other");
+  return el("span", { class: "chip chip-platform chip-full", title: name },
+    icon(platform.id),
+    el("span", { text: name }),
+  );
+}
+
+// The game's description, cut to a few lines with a button to read the rest.
+function aboutItem(text) {
+  const paragraph = el("p", { class: "detail-about clamped", text });
+  if (text.length <= 280) return detailItem("About", paragraph, true);
+  const toggle = el("button", { class: "text-link", type: "button", text: "Read more", "aria-expanded": "false" });
+  toggle.addEventListener("click", () => {
+    const expand = paragraph.classList.contains("clamped");
+    paragraph.classList.toggle("clamped", !expand);
+    toggle.textContent = expand ? "Show less" : "Read more";
+    toggle.setAttribute("aria-expanded", String(expand));
+  });
+  return detailItem("About", [paragraph, toggle], true);
+}
+
+// The rows of a game's details. Rows for things nobody knows are left out, except the ones that
+// are always worth showing: developer, publisher, release date and platforms.
+function detailList(info) {
+  const developers = listOf(info.developers);
+  const publishers = listOf(info.publishers);
+  const genres = genresOf(info);
+  const rating = ratingOf(info);
+  const platforms = distinct(platformNames(info));
+  const site = websiteLink(info.website);
+  const about = typeof info.description === "string" ? info.description.trim() : "";
+  return el("dl", { class: "detail-list" },
+    detailItem("Developer", developers.join(" · ") || "Unknown"),
+    detailItem("Publisher", publishers.join(" · ") || "Unknown"),
+    detailItem("Released", formatDate(info.released) || "Unknown"),
+    genres.length ? detailItem("Genres", genres.join(" · ")) : null,
+    info.esrb ? detailItem("Age rating", info.esrb) : null,
+    info.metacritic ? detailItem("Metacritic", String(info.metacritic)) : null,
+    rating ? detailItem("Rating", rating.toFixed(1) + " / 5") : null,
+    info.playtime ? detailItem("Average playtime", info.playtime + " hours") : null,
+    detailItem("Platforms",
+      platforms.length ? el("span", { class: "detail-chips" }, ...platforms.map(fullPlatformChip)) : "Not set",
+      true),
+    site ? detailItem("Website", site, true) : null,
+    about ? aboutItem(about) : null,
+  );
+}
+
+// The dropdown at the foot of a card. It is a real <details> element, so the mouse, Enter and
+// Space all open it and screen readers announce it. Its contents are built when it first opens.
+//   isOpen   - start open. The list is redrawn often, and a card that was open should stay open.
+//   onToggle - told when it opens or closes.
+//   onLoaded - given the details fetched from RAWG, so a saved game can keep them.
+function detailsPanel(game, { isOpen = false, onToggle, onLoaded } = {}) {
+  const body = el("div", { class: "more-body" });
+  const more = el("details", { class: "more" },
+    el("summary", {}, el("span", { text: "Details" }), icon("chevron")),
+    body,
+  );
+
+  async function fill() {
+    // Games added by hand have no RAWG page, and saved ones may already hold their details.
+    if (!game.rawg_id || detailsFetched(game)) {
+      body.replaceChildren(detailList(game));
+      if (!game.rawg_id && !listOf(game.developers).length && !listOf(game.publishers).length) {
+        body.append(el("p", { class: "more-note", text: "Added by hand. Edit the game to fill in a developer and publisher." }));
+      }
+      return;
+    }
+    body.replaceChildren(el("p", { class: "more-status loading", role: "status", text: "Loading details" }));
+    try {
+      const extra = await fetchDetails(game.rawg_id);
+      if (onLoaded) onLoaded(extra);
+      body.replaceChildren(detailList(withDetails(game, extra)));
+    } catch (err) {
+      const retry = el("button", { class: "btn btn-ghost btn-sm", type: "button", text: "Try again" });
+      retry.addEventListener("click", fill);
+      body.replaceChildren(
+        el("p", { class: "more-status", role: "alert", text: "Couldn't load the details. " + err.message }),
+        retry,
+      );
+    }
+  }
+
+  let filled = false;
+  const build = () => {
+    if (filled) return;
+    filled = true;
+    fill();
+  };
+  more.addEventListener("toggle", () => {
+    if (onToggle) onToggle(more.open);
+    if (more.open) build();
+  });
+  if (isOpen) {
+    more.open = true;
+    build();
+  }
+  return more;
+}
+
 // ---------- Platform picker ----------
 
 // Fill a form's platform tiles. Each tile is a checkbox underneath, so it works with the
@@ -216,6 +385,8 @@ function readForm(form) {
   const title = form.elements.title.value.trim();
   const rating = form.elements.rating.value.trim();
   const year = form.elements.year.value.trim();
+  const developers = listOf(form.elements.developer.value);
+  const publishers = listOf(form.elements.publisher.value);
   if (!title) return { error: "Give the game a title.", field: "title" };
   if (rating && (!/^\d(\.\d{1,2})?$/.test(rating) || Number(rating) > 5)) {
     return { error: "Rating should be a number from 0 to 5, like 4.5.", field: "rating" };
@@ -229,6 +400,8 @@ function readForm(form) {
       platformIds: checkedPlatforms(form),
       rating: rating ? Number(rating) : null,
       year: year ? Number(year) : null,
+      developers,
+      publishers,
     },
   };
 }
@@ -254,7 +427,72 @@ function watchForm(form) {
   form.addEventListener("input", () => clearFormError(form));
 }
 
+// ---------- Tabs ----------
+
+const TAB_NAMES = ["collection", "lookup", "add"];
+
+// The games page holds three panels behind a tab bar. Choosing a tab shows its panel and hides
+// the others. The address keeps the choice (index.html#lookup), so a refresh, the back button
+// and the links on the edit page all land on the right tab.
+function initTabs() {
+  const tabs = [...document.querySelectorAll('[role="tab"]')];
+  const bar = document.querySelector(".tabbar");
+
+  const fromAddress = () => {
+    const name = location.hash.slice(1);
+    return TAB_NAMES.includes(name) ? name : "collection";
+  };
+
+  function show(name) {
+    for (const tab of tabs) {
+      const on = tab.dataset.tab === name;
+      tab.setAttribute("aria-selected", String(on));
+      tab.tabIndex = on ? 0 : -1;
+      $("panel-" + tab.dataset.tab).hidden = !on;
+    }
+    // If the page was scrolled down, bring the new panel's top back under the tab bar.
+    const gap = $("panel-" + name).getBoundingClientRect().top - bar.getBoundingClientRect().height;
+    if (gap < 0) window.scrollBy(0, gap - 16);
+  }
+
+  for (const tab of tabs) {
+    tab.addEventListener("click", () => { location.hash = tab.dataset.tab; });
+  }
+
+  // The arrow keys move along the tabs, and Home and End jump to the ends.
+  $("tab-collection").parentElement.addEventListener("keydown", (e) => {
+    const at = tabs.indexOf(document.activeElement);
+    if (at < 0) return;
+    const last = tabs.length - 1;
+    const next = { ArrowRight: at === last ? 0 : at + 1, ArrowLeft: at === 0 ? last : at - 1, Home: 0, End: last }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    tabs[next].focus();
+    location.hash = tabs[next].dataset.tab;
+  });
+
+  window.addEventListener("hashchange", () => {
+    show(fromAddress());
+    // A link inside the panel that just hid would lose focus, so hand focus to the current tab.
+    const active = document.activeElement;
+    if (active === document.body || active.closest("[hidden]")) {
+      tabs.find((tab) => tab.tabIndex === 0).focus({ preventScroll: true });
+    }
+  });
+  show(fromAddress());
+}
+
 // ---------- Games page ----------
+
+// Give a card the slam-in animation, then take the class off again so that switching tabs
+// doesn't replay it.
+function slamIn(card, i = 0) {
+  card.classList.add("enter");
+  card.style.setProperty("--i", i);
+  card.addEventListener("animationend", (e) => {
+    if (e.target === card) card.classList.remove("enter");
+  });
+}
 
 function initGames() {
   const list = $("games");
@@ -266,6 +504,25 @@ function initGames() {
   let games = [];
   let filter = "";
   let results = [];
+  // Which cards have their Details dropdown open. The cards are redrawn whenever the list changes,
+  // and an open one should not snap shut.
+  const openGames = new Set();
+  const openResults = new Set();
+  const remember = (set, key) => (open) => (open ? set.add(key) : set.delete(key));
+
+  // Details fetched for a saved game are saved with it, so they show at once next time.
+  async function keepDetails(game, extra) {
+    const fresh = {};
+    for (const [key, value] of Object.entries(extra)) {
+      if (game[key] === undefined) fresh[key] = value;
+    }
+    Object.assign(game, fresh);
+    try {
+      await api("/api/games/" + encodeURIComponent(game.id), { method: "PUT", body: fresh });
+    } catch {
+      // Not saved this time. The card fetches them again the next time it is opened.
+    }
+  }
 
   // A search result is already in the collection when it has the same RAWG id or the same title.
   const owned = (result) =>
@@ -273,13 +530,28 @@ function initGames() {
       (g.rawg_id && g.rawg_id === result.rawg_id) ||
       (g.title && g.title.trim().toLowerCase() === result.title.trim().toLowerCase()));
 
-  function showEmpty(title, text, action) {
+  // The message that stands in for the list. It can offer a retry button, or links to the other tabs.
+  function showEmpty(title, text, action, links = false) {
     empty.querySelector("h3").textContent = title;
     empty.querySelector("p").textContent = text;
     const button = empty.querySelector("button");
     button.hidden = !action;
     button.onclick = action || null;
+    empty.querySelector(".empty-actions").hidden = !links;
     empty.hidden = false;
+  }
+
+  // The number on the My games tab pops when it changes, so an add is noticed from the other tabs.
+  function setTabCount(count) {
+    const badge = $("tab-count");
+    const changed = badge.textContent !== String(count);
+    badge.textContent = count;
+    if (changed && badge.dataset.ready) {
+      badge.classList.remove("bump");
+      void badge.offsetWidth;
+      badge.classList.add("bump");
+    }
+    badge.dataset.ready = "true";
   }
 
   function gameCard(game) {
@@ -329,6 +601,11 @@ function initGames() {
         }),
         deleteButton,
       ),
+      detailsPanel(game, {
+        isOpen: openGames.has(game.id),
+        onToggle: remember(openGames, game.id),
+        onLoaded: (extra) => keepDetails(game, extra),
+      }),
     );
   }
 
@@ -342,24 +619,22 @@ function initGames() {
         platformNames(g).join(" "),
         platformTags(g).map((t) => t.title).join(" "),
         genresOf(g).join(" "),
+        listOf(g.developers).join(" "),
+        listOf(g.publishers).join(" "),
         yearOf(g),
       ].join(" ").toLowerCase().includes(q));
 
     $("count-num").textContent = games.length;
     $("count-label").textContent = games.length === 1 ? "game" : "games";
+    setTabCount(games.length);
 
     const cards = shown.map(gameCard);
-    if (enter) {
-      cards.forEach((card, i) => {
-        card.classList.add("enter");
-        card.style.setProperty("--i", i);
-      });
-    }
+    if (enter) cards.forEach((card, i) => slamIn(card, i));
     list.replaceChildren(...cards);
 
     if (shown.length) empty.hidden = true;
     else if (games.length) showEmpty("No matches", "Nothing in your collection matches “" + filter.trim() + "”.");
-    else showEmpty("Your collection is empty", "Add your first game with the form, or look one up online.");
+    else showEmpty("Your collection is empty", "Search RAWG for a game, or add one yourself.", null, true);
   }
 
   async function load() {
@@ -396,7 +671,8 @@ function initGames() {
     games.push(game);
     render();
     renderResults();
-    list.querySelector('[data-id="' + game.id + '"]')?.classList.add("enter");
+    const card = list.querySelector('[data-id="' + game.id + '"]');
+    if (card) slamIn(card);
     toast("Added “" + (game.title || "Untitled game") + "” to your collection.");
   }
 
@@ -422,6 +698,11 @@ function initGames() {
         el("p", { class: "tags" }, ...platformTags(result).map(platformChip)),
         button,
       ),
+      // Have a look at the developer and publisher before deciding to keep it.
+      detailsPanel(result, {
+        isOpen: openResults.has(result.rawg_id),
+        onToggle: remember(openResults, result.rawg_id),
+      }),
     );
   }
 
@@ -430,10 +711,12 @@ function initGames() {
   }
 
   // The backend keeps whatever it is sent, so a search result is saved exactly as it came back.
+  // If its details were already opened they go along with it.
   async function addResult(result, button) {
     setBusy(button, true, "Adding");
     try {
-      collect(await api("/api/games", { method: "POST", body: result }));
+      const extra = detailsCache.has(result.rawg_id) ? await detailsCache.get(result.rawg_id).catch(() => null) : null;
+      collect(await api("/api/games", { method: "POST", body: { ...result, ...extra } }));
     } catch (err) {
       setBusy(button, false);
       toast(err.message, "error");
@@ -445,10 +728,12 @@ function initGames() {
     clearFormError(addForm);
     const check = readForm(addForm);
     if (check.error) return showFormError(addForm, check.error, check.field);
-    const { title, platformIds, rating, year } = check.values;
+    const { title, platformIds, rating, year, developers, publishers } = check.values;
     const body = { title, platforms: platformIds.map((id) => platformById(id).name) };
     if (rating != null) body.rating = rating;
     if (year != null) body.released = String(year);
+    if (developers.length) body.developers = developers;
+    if (publishers.length) body.publishers = publishers;
 
     const button = addForm.querySelector("button[type=submit]");
     setBusy(button, true, "Adding");
@@ -490,6 +775,7 @@ function initGames() {
     render();
   });
 
+  initTabs();
   buildPicker(addForm);
   watchForm(addForm);
   watchForm(lookupForm);
@@ -539,6 +825,8 @@ function initEdit() {
       form.elements.title.value = original.title || "";
       form.elements.rating.value = ratingOf(original) ?? "";
       form.elements.year.value = yearOf(original) ?? "";
+      form.elements.developer.value = listOf(original.developers).join(", ");
+      form.elements.publisher.value = listOf(original.publishers).join(", ");
       $("edit-name").textContent = title;
       document.title = "Edit " + title + " · MyGameVault";
       state.hidden = true;
@@ -554,7 +842,7 @@ function initEdit() {
     clearFormError(form);
     const check = readForm(form);
     if (check.error) return showFormError(form, check.error, check.field);
-    const { title, platformIds, rating, year } = check.values;
+    const { title, platformIds, rating, year, developers, publishers } = check.values;
 
     // Send only what changed. The backend merges it into the saved game, so the RAWG id, the
     // picture, the genres and the full release date are never lost by editing the title.
@@ -564,6 +852,11 @@ function initEdit() {
     if (!sameSystems) changes.platforms = platformsAfterEdit(original, platformIds);
     if (rating !== ratingOf(original)) changes.rating = rating;
     if (year !== yearOf(original)) changes.released = year == null ? null : String(year);
+    // An empty box for a game that never had a developer is not a change, and leaving it out lets
+    // the Details dropdown still fetch the real one from RAWG.
+    const sameNames = (a, b) => a.length === b.length && a.every((name, i) => name === b[i]);
+    if (!sameNames(developers, listOf(original.developers))) changes.developers = developers;
+    if (!sameNames(publishers, listOf(original.publishers))) changes.publishers = publishers;
 
     const button = form.querySelector("button[type=submit]");
     setBusy(button, true, "Saving");

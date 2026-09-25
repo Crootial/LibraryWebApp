@@ -172,6 +172,27 @@
     <circle cx="24" cy="40" r="1.7" fill="currentColor"/>
   </symbol>
 
+  <!-- Icons for the tab bar -->
+  <symbol id="search" viewBox="0 0 48 48">
+    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)">
+      <circle cx="21" cy="21" r="12.5"/>
+      <path d="M30.5 30.5L42 42"/>
+    </g>
+  </symbol>
+
+  <symbol id="plus" viewBox="0 0 48 48">
+    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)">
+      <path d="M24 8v32M8 24h32"/>
+    </g>
+  </symbol>
+
+  <!-- A down chevron for dropdowns. It is turned upside down in CSS when the dropdown is open -->
+  <symbol id="chevron" viewBox="0 0 48 48">
+    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)">
+      <path d="M10 17l14 14 14-14"/>
+    </g>
+  </symbol>
+
   <!-- A solid star, for ratings -->
   <symbol id="star" viewBox="0 0 48 48">
     <path fill="currentColor" d="M24 3.5l6.5 13.6 14.9 2.1-10.8 10.5 2.6 14.8L24 37.4l-13.2 7.1 2.6-14.8L2.6 19.2l14.9-2.1z"/>

@@ -50,10 +50,6 @@ body {
 
 /* ---------- Masthead ---------- */
 
-.masthead {
-  margin-bottom: clamp(24px, 4vw, 40px);
-}
-
 .masthead-bar {
   padding: clamp(22px, 4vw, 42px) 0;
   color: var(--white);
@@ -152,36 +148,134 @@ a.brand:focus-visible {
 .shell {
   width: min(1180px, 100% - 32px);
   margin-inline: auto;
-  padding-bottom: 88px;
+  padding: clamp(24px, 4vw, 40px) 0 88px;
 }
 
 .shell-narrow {
   width: min(560px, 100% - 32px);
 }
 
-.layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
-  grid-template-rows: auto 1fr;
-  grid-template-areas:
-    "games lookup"
-    "games add";
-  gap: 28px;
-  align-items: start;
+/* ---------- Tab bar ---------- */
+
+/* Sticks to the top of the window so the tabs are always in reach. On the games page the tabs
+   are buttons that swap panels. On the edit page they are plain links back to those panels. */
+.tabbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--white);
+  border-bottom: 4px solid var(--black);
 }
 
-.area-games { grid-area: games; }
-.area-add { grid-area: add; }
-.area-lookup { grid-area: lookup; }
+.tabbar .wrap {
+  align-items: center;
+  justify-content: flex-start;
+  padding: 12px 0 14px;
+}
 
-@media (max-width: 900px) {
-  .layout {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: none;
-    grid-template-areas:
-      "lookup"
-      "add"
-      "games";
+.tabs {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.tab {
+  position: relative;
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 18px;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--black);
+  background: var(--white);
+  border: var(--bw) solid var(--black);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s, background 0.1s;
+}
+
+.tab:hover {
+  background: var(--gray);
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--black);
+}
+
+.tab:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 var(--black);
+}
+
+/* The current tab is amber and pushed in, so it doesn't rely on colour alone. */
+.tab[aria-selected="true"],
+.tab[aria-selected="true"]:hover {
+  background: var(--amber);
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--black);
+}
+
+.tab:focus-visible {
+  outline: var(--bw) solid var(--black);
+  outline-offset: 4px;
+}
+
+.tab .icon {
+  width: 22px;
+  height: 22px;
+  --sw: 4.4;
+}
+
+.tab-count {
+  min-width: 1.9em;
+  padding: 0 6px;
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--white);
+  background: var(--navy);
+  border: 2px solid var(--black);
+}
+
+.tab-count.bump {
+  animation: bump 0.3s;
+}
+
+@media (max-width: 560px) {
+  .tabs {
+    gap: 8px;
+  }
+
+  /* Three equal tabs, each with its icon above the label. */
+  .tab {
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 4px;
+    font-size: 0.64rem;
+    letter-spacing: 0.03em;
+    text-align: center;
+  }
+
+  .tab .icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .tab-count {
+    position: absolute;
+    top: -9px;
+    right: -6px;
+    min-width: 1.6em;
+    padding: 0 4px;
+    font-size: 0.66rem;
   }
 }
 
@@ -191,8 +285,7 @@ a.brand:focus-visible {
   background: var(--white);
   border: var(--bw) solid var(--black);
   box-shadow: var(--shadow);
-  animation: slam 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) backwards;
-  animation-delay: calc(var(--i, 0) * 80ms + 60ms);
+  animation: slam 0.35s cubic-bezier(0.2, 0.9, 0.3, 1) backwards;
 }
 
 .panel-bar {
@@ -245,6 +338,34 @@ a.brand:focus-visible {
   color: var(--navy);
 }
 
+.text-link {
+  font-weight: 800;
+  color: var(--black);
+  text-decoration: underline;
+  text-decoration-color: var(--amber);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 3px;
+}
+
+.text-link:hover {
+  background: var(--amber);
+}
+
+.text-link:focus-visible {
+  outline: var(--bw) solid var(--black);
+  outline-offset: 2px;
+}
+
+/* The same link look on a button, for actions that don't go anywhere, like "Read more". */
+button.text-link {
+  padding: 0;
+  font: inherit;
+  font-weight: 800;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
 /* ---------- Console icons ---------- */
 
 /* The icons live in icons.svg and take their colour from the text around them.
@@ -282,6 +403,44 @@ a.brand:focus-visible {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+/* The add form is one column, in this order: title, developer and publisher, platforms, rating
+   and year, then the button. Once the panel is wide the platforms move to a column of their own
+   beside the text fields. */
+.form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container (min-width: 720px) {
+  .form-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+    grid-template-rows: auto auto 1fr auto;
+    grid-template-areas:
+      "title picker"
+      "people picker"
+      "meta picker"
+      "foot foot";
+    align-items: start;
+    column-gap: 36px;
+  }
+
+  .form-grid > .fg-title { grid-area: title; }
+  .form-grid > .fg-people { grid-area: people; }
+  .form-grid > .fg-picker { grid-area: picker; }
+  .form-grid > .fg-meta { grid-area: meta; }
+  .form-grid > .fg-foot { grid-area: foot; }
+
+  .form-grid .fg-foot .btn {
+    width: auto;
+    min-width: 260px;
+  }
+}
+
+/* A search box is easier to use at a sensible width than stretched across the whole panel. */
+#lookup-form {
+  max-width: 640px;
 }
 
 label {
@@ -433,7 +592,12 @@ input[aria-invalid="true"]:focus-visible {
   text-transform: uppercase;
 }
 
-/* 15 platforms: five across when narrow (3 even rows), eight across when the panel is wide. */
+/* 15 platforms: five across when narrow (3 even rows), eight across when there is room.
+   The frame is the size container, so the count follows the picker's own width, not the panel's. */
+.platform-frame {
+  container-type: inline-size;
+}
+
 .platform-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -623,9 +787,12 @@ input[aria-invalid="true"]:focus-visible {
 
 /* ---------- Game cards ---------- */
 
+/* The panels are wide now, so cards sit in as many columns as fit. */
 .games,
 .results {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 480px), 1fr));
+  align-items: start; /* a card that opens its details grows alone, without stretching its neighbour */
   gap: 16px;
   margin: 0;
   padding: 0;
@@ -633,7 +800,7 @@ input[aria-invalid="true"]:focus-visible {
 }
 
 .results {
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
   margin-top: 18px;
 }
 
@@ -642,11 +809,12 @@ input[aria-invalid="true"]:focus-visible {
 }
 
 .game {
+  --pad: 14px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 16px;
-  padding: 14px;
+  padding: var(--pad);
   background: var(--gray);
   border: var(--bw) solid var(--black);
   box-shadow: 5px 5px 0 var(--black);
@@ -775,6 +943,166 @@ input[aria-invalid="true"]:focus-visible {
   gap: 10px;
 }
 
+/* ---------- Details dropdown ---------- */
+
+/* A bar along the foot of a card that opens to show the game's details. It runs edge to edge,
+   so it cancels the card's padding (--pad). */
+.more {
+  grid-column: 1 / -1;
+  margin: 4px calc(-1 * var(--pad)) calc(-1 * var(--pad));
+  background: var(--white);
+  border-top: var(--bw) solid var(--black);
+}
+
+.more > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px var(--pad);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.more > summary:hover {
+  background: var(--amber);
+}
+
+.more > summary:focus-visible {
+  outline: var(--bw) solid var(--black);
+  outline-offset: -6px;
+}
+
+.more > summary .icon {
+  width: 18px;
+  height: 18px;
+  --sw: 6;
+  transition: transform 0.15s;
+}
+
+/* Open: the bar turns navy and the arrow flips. */
+.more[open] > summary {
+  color: var(--white);
+  background: var(--navy);
+}
+
+.more[open] > summary:hover {
+  color: var(--black);
+  background: var(--amber);
+}
+
+.more[open] > summary .icon {
+  transform: rotate(180deg);
+}
+
+.more-body {
+  padding: 14px var(--pad) 16px;
+  border-top: var(--bw) solid var(--black);
+  animation: drop 0.2s ease-out backwards;
+}
+
+/* The facts sit in as many columns as fit. Long ones (platforms, website, the description)
+   take a whole row. */
+.detail-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px 20px;
+  margin: 0;
+}
+
+.detail {
+  min-width: 0;
+}
+
+.detail-wide {
+  grid-column: 1 / -1;
+}
+
+.detail dt {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--navy);
+}
+
+.detail dd {
+  margin: 4px 0 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.detail-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip-full span {
+  max-width: none;
+}
+
+.detail-about {
+  margin: 0;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+.detail-about.clamped {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  overflow: hidden;
+}
+
+.detail-about + .text-link {
+  margin-top: 6px;
+  font-size: 0.85rem;
+}
+
+.more-status {
+  margin: 0;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.more-status.loading::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 10px;
+  border: 3px solid currentColor;
+  vertical-align: -1px;
+  animation: spin 0.8s steps(4) infinite;
+}
+
+.more-status.loading::after {
+  content: "…";
+}
+
+.more-body .btn {
+  margin-top: 12px;
+}
+
+.more-note {
+  margin: 14px 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+
 @media (max-width: 560px) {
   .game {
     grid-template-columns: auto minmax(0, 1fr);
@@ -796,11 +1124,12 @@ input[aria-invalid="true"]:focus-visible {
 
 /* One search result: a small cover beside its details and the button to keep it. */
 .result {
+  --pad: 12px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
   gap: 12px;
-  padding: 12px;
+  padding: var(--pad);
   background: var(--gray);
   border: var(--bw) solid var(--black);
 }
@@ -809,7 +1138,7 @@ input[aria-invalid="true"]:focus-visible {
   margin-top: 8px;
 }
 
-.result .btn {
+.result-body > .btn {
   margin-top: 10px;
 }
 
@@ -868,6 +1197,19 @@ input[aria-invalid="true"]:focus-visible {
 
 .empty .btn {
   margin-top: 18px;
+}
+
+/* Where to go from an empty collection: the other two tabs. */
+.empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.empty-actions .btn {
+  margin-top: 0;
 }
 
 /* ---------- Edit page ---------- */
@@ -982,6 +1324,17 @@ input[aria-invalid="true"]:focus-visible {
     opacity: 0;
     transform: translateY(10px) scale(0.96);
   }
+}
+
+@keyframes drop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes bump {
+  40% { transform: scale(1.35); }
 }
 
 @keyframes shake {
