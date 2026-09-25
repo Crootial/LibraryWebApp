@@ -1,66 +1,218 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
- <meta charset="UTF-8" />
- <title>MyLibrary</title>
+  <meta charset="UTF-8" />
+  <title>Sini Gang Game Vault</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    ul {
+      list-style-type: none;
+      padding: 0;
+    }
+    /* Style for each game card item */
+    .game-item {
+      display: flex;
+      gap: 15px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      align-items: flex-start;
+      max-width: 600px;
+      background-color: #f9f9f9;
+    }
+    /* Image on the left side */
+    .game-thumb {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 6px;
+      background-color: #ddd;
+    }
+    .game-info {
+      flex: 1;
+    }
+    /* Drop-down menu styling */
+    details {
+      margin-top: 8px;
+      background: #ffffff;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 6px 10px;
+    }
+    summary {
+      font-weight: bold;
+      cursor: pointer;
+      color: #0066cc;
+    }
+    summary:hover {
+      text-decoration: underline;
+    }
+    .details-content {
+      margin-top: 8px;
+      font-size: 0.9em;
+      color: #333;
+    }
+    .btn {
+      margin-top: 8px;
+      cursor: pointer;
+      padding: 5px 10px;
+    }
+  </style>
 </head>
 
 <body>
-    <h1>MyLibrary</h1>
-    <h3>Add a book</h3>
-    <input id="title" placeholder="Title" />
-    <input id="author" placeholder="Author" />
-    <input id="year" placeholder="Year" />
-    <button onclick="addBook()">Add book</button>
-    <h3>My books</h3>
-    <ul id="books"></ul>
-    <h3>Look up online</h3>
-    <input id="search" placeholder="Title to search" />
-    <button onclick="lookup()">Search online</button>
-    <ul id="results"></ul>
-    <script>
- async function loadBooks() {
-        const res = await fetch("/api/books");
-        const books = await res.json();
-        let html = "";
-    for (let i = 0; i < books.length; i++) {
-        const b = books[i];
-            html += "<li>" + b.title + " by " + b.author + " (" + b.year + ") ";
-            html += "<a href='edit.html?id=" + b.id + "'>Edit</a> ";
-            html += "<button onclick='deleteBook(" + b.id + ")'>Delete</button>";
-            html += "</li>";
-        }
-    document.getElementById("books").innerHTML = html;
- }
- async function addBook() {
-     const book = {
-        title: document.getElementById("title").value,
-        author: document.getElementById("author").value,
-        year: document.getElementById("year").value,
-    };
-    await fetch("/api/books", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(book),
-    });
-    loadBooks();
- }
- async function deleteBook(id) {
-    await fetch("/api/books/" + id, { method: "DELETE" });
-    loadBooks();
- }
- async function lookup() {
-        const title = document.getElementById("search").value;
-        const res = await fetch("/api/lookup?title=" + title);
-        const results = await res.json();
-        let html = "";
-        for (let i = 0; i < results.length; i++) {
-        const r = results[i];
-        html += "<li>" + r.title + " by " + r.author + " (" + r.year + ")</li>";
+  <h1>MyGameVault</h1>
+
+  <h3>Add a Game Manually</h3>
+  <input id="title" placeholder="Title" />
+  <input id="platform" placeholder="Platform (e.g. PC, PS5)" />
+  <input id="rating" placeholder="Rating (e.g. 4.5)" />
+  <button onclick="addGame()">Add Game</button>
+
+  <h3>My Saved Games</h3>
+  <ul id="games"></ul>
+
+  <h3>Look Up Online</h3>
+  <input id="search" placeholder="Game title to search..." />
+  <button onclick="lookup()">Search Online</button>
+  <ul id="results"></ul>
+
+  <script>
+    // Helper to format release year
+    function getYear(released) {
+      return released && released !== "N/A" ? released.split("-")[0] : "N/A";
     }
-    document.getElementById("results").innerHTML = html;
- }
- loadBooks();
- </script>
+
+    // 1. Fetch and display saved games from local database
+    async function loadGames() {
+      const res = await fetch("/api/games");
+      const games = await res.json();
+      let html = "";
+
+      for (let i = 0; i < games.length; i++) {
+        const g = games[i];
+        const imageSrc = g.image || "https://via.placeholder.com/100?text=No+Image";
+        const platformsText = Array.isArray(g.platforms) && g.platforms.length > 0 
+          ? g.platforms.join(", ") 
+          : "N/A";
+        const genresText = Array.isArray(g.genres) && g.genres.length > 0 
+          ? g.genres.join(", ") 
+          : "N/A";
+
+        html += `
+          <li class="game-item">
+            <img src="${imageSrc}" class="game-thumb" alt="${g.title}" />
+            <div class="game-info">
+              <strong>${g.title}</strong> -  ${g.rating || "N/A"} (${getYear(g.released)})
+              <br/>
+              <button class="btn" onclick="deleteGame(${g.id})">Delete</button>
+
+              <details>
+                <summary>Show Details</summary>
+                <div class="details-content">
+                  <p><strong>Release Date:</strong> ${g.released || "N/A"}</p>
+                  <p><strong>Platforms:</strong> ${platformsText}</p>
+                  <p><strong>Genres:</strong> ${genresText}</p>
+                </div>
+              </details>
+            </div>
+          </li>
+        `;
+      }
+
+      document.getElementById("games").innerHTML = html;
+    }
+
+    // 2. Add a game manually
+    async function addGame() {
+      const game = {
+        title: document.getElementById("title").value,
+        platforms: [document.getElementById("platform").value],
+        rating: document.getElementById("rating").value,
+      };
+
+      await fetch("/api/games", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(game),
+      });
+
+      document.getElementById("title").value = "";
+      document.getElementById("platform").value = "";
+      document.getElementById("rating").value = "";
+
+      loadGames();
+    }
+
+    // 3. Delete a game by ID
+    async function deleteGame(id) {
+      await fetch("/api/games/" + id, { method: "DELETE" });
+      loadGames();
+    }
+
+    // 4. Search RAWG online via backend /api/lookup
+    async function lookup() {
+      const title = document.getElementById("search").value;
+      if (!title) return;
+
+      const res = await fetch("/api/lookup?title=" + encodeURIComponent(title));
+      const results = await res.json();
+      let html = "";
+
+      for (let i = 0; i < results.length; i++) {
+        const r = results[i];
+        const imageSrc = r.image || "https://via.placeholder.com/100?text=No+Image";
+        const platformsText = Array.isArray(r.platforms) && r.platforms.length > 0 
+          ? r.platforms.join(", ") 
+          : "N/A";
+        const genresText = Array.isArray(r.genres) && r.genres.length > 0 
+          ? r.genres.join(", ") 
+          : "N/A";
+
+        // Safely stringify game data to pass into save button
+        const safeGameData = JSON.stringify(r).replace(/'/g, "&apos;");
+
+        html += `
+          <li class="game-item">
+            <img src="${imageSrc}" class="game-thumb" alt="${r.title}" />
+            <div class="game-info">
+              <strong>${r.title}</strong> -  ${r.rating} (${getYear(r.released)})
+              <br/>
+              <button class="btn" onclick='saveFromLookup(${safeGameData})'>+ Save Game</button>
+
+              <details>
+                <summary>Show Details</summary>
+                <div class="details-content">
+                  <p><strong>Release Date:</strong> ${r.released}</p>
+                  <p><strong>Platforms:</strong> ${platformsText}</p>
+                  <p><strong>Genres:</strong> ${genresText}</p>
+                </div>
+              </details>
+            </div>
+          </li>
+        `;
+      }
+
+      document.getElementById("results").innerHTML = html;
+    }
+
+    // Save looked-up game directly to local DB
+    async function saveFromLookup(gameData) {
+      await fetch("/api/games", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(gameData),
+      });
+
+      loadGames();
+    }
+
+    // Initial load
+    loadGames();
+  </script>
 </body>
 </html>
