@@ -172,7 +172,7 @@
     <circle cx="24" cy="40" r="1.7" fill="currentColor"/>
   </symbol>
 
-  <!-- Icons for the tab bar -->
+  <!-- Icons for the tab bar, the account button and the wishlist -->
   <symbol id="search" viewBox="0 0 48 48">
     <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)">
       <circle cx="21" cy="21" r="12.5"/>
@@ -183,6 +183,40 @@
   <symbol id="plus" viewBox="0 0 48 48">
     <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)">
       <path d="M24 8v32M8 24h32"/>
+    </g>
+  </symbol>
+
+  <symbol id="home" viewBox="0 0 48 48">
+    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)">
+      <path d="M5 23L24 6l19 17"/>
+      <path d="M10 19.5V41h28V19.5"/>
+      <path d="M20 41V29h8v12"/>
+    </g>
+  </symbol>
+
+  <symbol id="user" viewBox="0 0 48 48">
+    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)">
+      <circle cx="24" cy="15" r="8.5"/>
+      <path d="M6.5 43c0-9.5 7.8-15.5 17.5-15.5S41.5 33.5 41.5 43"/>
+    </g>
+  </symbol>
+
+  <!-- A heart for the wishlist: heart is the outline, heart-solid is the same shape filled in -->
+  <symbol id="heart" viewBox="0 0 48 48">
+    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)">
+      <path d="M41.7 9.2a11 11 0 0 0-15.6 0L24 11.3l-2.1-2.1a11 11 0 0 0-15.6 15.6l2.1 2.1L24 42.5l15.6-15.6 2.1-2.1a11 11 0 0 0 0-15.6z"/>
+    </g>
+  </symbol>
+
+  <symbol id="heart-solid" viewBox="0 0 48 48">
+    <path fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)" d="M41.7 9.2a11 11 0 0 0-15.6 0L24 11.3l-2.1-2.1a11 11 0 0 0-15.6 15.6l2.1 2.1L24 42.5l15.6-15.6 2.1-2.1a11 11 0 0 0 0-15.6z"/>
+  </symbol>
+
+  <!-- A line climbing up and to the right, for the trending list -->
+  <symbol id="trend" viewBox="0 0 48 48">
+    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)">
+      <path d="M4 35l13-13 8 8 19-19"/>
+      <path d="M31 11h13v13"/>
     </g>
   </symbol>
 

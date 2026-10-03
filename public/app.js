@@ -2,6 +2,8 @@
 //
 // The API stores a game as { id, title, platforms: [names], rating, released, image, genres, rawg_id }.
 // Games added by hand carry fewer of those, so every reader below copes with missing fields.
+// A collection, a wishlist, search results and the trending list all hold games in that shape.
+// The collection and the wishlist belong to the signed-in account; search and trending are open to all.
 
 const $ = (id) => document.getElementById(id);
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -50,7 +52,13 @@ async function api(path, options = {}) {
       : "Can't reach the server. Is it running?");
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "Something went wrong (" + res.status + ").");
+  if (!res.ok) {
+    // A sign-in can run out while the page is open. Say so, so the page can ask for a new one.
+    if (res.status === 401 && !path.startsWith("/api/auth/")) window.dispatchEvent(new Event("session-ended"));
+    const error = new Error(data.error || "Something went wrong (" + res.status + ").");
+    error.status = res.status;
+    throw error;
+  }
   return data;
 }
 
@@ -137,6 +145,12 @@ const genresOf = (game) =>
 const imageOf = (game) =>
   typeof game.image === "string" && /^https?:\/\//i.test(game.image) ? game.image : null;
 
+const titleKey = (game) => String(game.title ?? "").trim().toLowerCase();
+
+// Two entries are the same game when they share a RAWG id or a title.
+const sameGame = (a, b) =>
+  Boolean((a.rawg_id && a.rawg_id === b.rawg_id) || (titleKey(a) && titleKey(a) === titleKey(b)));
+
 // RAWG will serve a smaller copy of its pictures, which loads faster than the full size.
 const artUrl = (url) =>
   url.startsWith("https://media.rawg.io/media/") && !url.includes("/media/crop/")
@@ -146,12 +160,13 @@ const artUrl = (url) =>
 // ---------- Pieces of a card ----------
 
 // The picture on a card: RAWG's art when there is some, laid over a tile holding the game's
-// console icon. If the art won't load the tile shows through instead.
-function cover(game, small = false) {
+// console icon. If the art won't load the tile shows through instead. The size is "sm" for a
+// search result, "lg" for a trending game, and left out for a card in a list.
+function cover(game, size = "") {
   const first = platformTags(game)[0];
   const platform = first ? first.platform : platformById("other");
   const tile = el("div", {
-    class: "cover" + (small ? " cover-sm" : ""),
+    class: "cover" + (size ? " cover-" + size : ""),
     "data-brand": platform.brand,
     "aria-hidden": "true",
   }, icon(platform.id));
@@ -180,6 +195,50 @@ function ratingChip(rating) {
     el("span", { text: rating.toFixed(1) }),
   );
 }
+
+// The title, genres and chips at the centre of a card.
+function cardBody(game, className = "game-body") {
+  const rating = ratingOf(game);
+  const year = yearOf(game);
+  const genres = genresOf(game);
+  return el("div", { class: className },
+    el("h3", { class: "game-title", text: game.title || "Untitled game" }),
+    genres.length ? el("p", { class: "game-meta", text: genres.slice(0, 3).join(" · ") }) : null,
+    el("p", { class: "tags" },
+      rating ? ratingChip(rating) : null,
+      year ? el("span", { class: "chip", text: year }) : null,
+      ...platformTags(game).map(platformChip),
+    ),
+  );
+}
+
+// Fill in one of the dashed boxes that stand in for a list: a heading and a line of text, and
+// either a Try again button (retry) or buttons that lead elsewhere (links). A link with a mode
+// opens the Account tab on Sign in or on Create account.
+function fillEmpty(box, { title, text, retry, links = [] }) {
+  box.querySelector("h3").textContent = title;
+  box.querySelector("p").textContent = text;
+  const button = box.querySelector("button");
+  if (button) {
+    button.hidden = !retry;
+    button.onclick = retry || null;
+  }
+  const actions = box.querySelector(".empty-actions");
+  actions.hidden = !links.length;
+  actions.replaceChildren(...links.map((link) => el("a", {
+    class: "btn " + (link.primary ? "btn-primary" : "btn-ghost"),
+    href: link.href,
+    text: link.text,
+    ...(link.mode ? { "data-mode": link.mode } : {}),
+  })));
+  box.hidden = false;
+}
+
+// What a signed-out visitor is offered in place of their collection and wishlist.
+const SIGN_IN_LINKS = [
+  { text: "Sign in", href: "#account", primary: true, mode: "signin" },
+  { text: "Create account", href: "#account", mode: "signup" },
+];
 
 // ---------- Game details (the dropdown on a card) ----------
 
@@ -406,6 +465,9 @@ const knownPlatformIds = (game) =>
 
 // ---------- Forms ----------
 
+// The same rule the server applies to a new account's username.
+const USERNAME = /^[A-Za-z0-9][A-Za-z0-9_.-]{2,23}$/;
+
 // Read a game form. Gives back { values } or { error, field }.
 function readForm(form) {
   const title = form.elements.title.value.trim();
@@ -455,27 +517,45 @@ function watchForm(form) {
 
 // ---------- Tabs ----------
 
-const TAB_NAMES = ["collection", "lookup", "add"];
+// The Account panel has no tab of its own: the button in the masthead opens it.
+const PANEL_NAMES = ["home", "collection", "wishlist", "lookup", "add", "account"];
 
-// The games page holds three panels behind a tab bar. Choosing a tab shows its panel and hides
-// the others. The address keeps the choice (index.html#lookup), so a refresh, the back button
-// and the links on the edit page all land on the right tab.
+// The games page holds six panels, five of them behind the tab bar. Choosing a tab shows its
+// panel and hides the others. The address keeps the choice (index.html#lookup), so a refresh,
+// the back button and the links on the edit page all land on the right tab.
+// It gives back back(): the panel that was open before the Account one, where signing in returns to.
 function initTabs() {
   const tabs = [...document.querySelectorAll('[role="tab"]')];
+  const panels = [...document.querySelectorAll(".panel")];
   const bar = document.querySelector(".tabbar");
+  let shown = "home";
+  let before = "home";
 
   const fromAddress = () => {
     const name = location.hash.slice(1);
-    return TAB_NAMES.includes(name) ? name : "collection";
+    return PANEL_NAMES.includes(name) ? name : "home";
   };
 
+  // On a narrow screen the tabs scroll sideways, so slide the chosen one into view.
+  function keepInView(tab) {
+    const strip = tab.parentElement;
+    const over = tab.offsetLeft + tab.offsetWidth + 8 - (strip.scrollLeft + strip.clientWidth);
+    if (over > 0) strip.scrollLeft += over;
+    else if (tab.offsetLeft - 8 < strip.scrollLeft) strip.scrollLeft = Math.max(0, tab.offsetLeft - 8);
+  }
+
   function show(name) {
+    if (shown !== "account" && name !== shown) before = shown;
+    shown = name;
+    for (const panel of panels) panel.hidden = panel.id !== "panel-" + name;
     for (const tab of tabs) {
       const on = tab.dataset.tab === name;
       tab.setAttribute("aria-selected", String(on));
       tab.tabIndex = on ? 0 : -1;
-      $("panel-" + tab.dataset.tab).hidden = !on;
+      if (on) keepInView(tab);
     }
+    // With the Account panel open no tab is chosen, so the first stays reachable by keyboard.
+    if (!tabs.some((tab) => tab.tabIndex === 0)) tabs[0].tabIndex = 0;
     // If the page was scrolled down, bring the new panel's top back under the tab bar.
     const gap = $("panel-" + name).getBoundingClientRect().top - bar.getBoundingClientRect().height;
     if (gap < 0) window.scrollBy(0, gap - 16);
@@ -506,9 +586,12 @@ function initTabs() {
     }
   });
   show(fromAddress());
+  return { back: () => before };
 }
 
 // ---------- Games page ----------
+
+const HOME_HINT = "The games players have been adding to their libraries the most lately.";
 
 // Give a card the slam-in animation, then take the class off again so that switching tabs
 // doesn't replay it.
@@ -527,13 +610,23 @@ function initGames() {
   const lookupForm = $("lookup-form");
   const resultsList = $("results");
   const lookupStatus = $("lookup-status");
+  const wishList = $("wishlist");
+  const wishEmpty = $("wishlist-empty");
+  const trendList = $("trending");
+  const trendEmpty = $("trending-empty");
+  const nav = initTabs();
+  let user = null; // the signed-in account { id, username, createdAt }, or null for a visitor
   let games = [];
+  let wishlist = [];
+  let trending = null; // stays null until the list has loaded
   let filter = "";
   let results = [];
   // Which cards have their Details dropdown open. The cards are redrawn whenever the list changes,
   // and an open one should not snap shut.
   const openGames = new Set();
+  const openWishes = new Set();
   const openResults = new Set();
+  const openTrending = new Set();
   const remember = (set, key) => (open) => (open ? set.add(key) : set.delete(key));
 
   // Details fetched for a saved game are saved with it, so they show at once next time.
@@ -550,26 +643,27 @@ function initGames() {
     }
   }
 
-  // A search result is already in the collection when it has the same RAWG id or the same title.
-  const owned = (result) =>
-    games.some((g) =>
-      (g.rawg_id && g.rawg_id === result.rawg_id) ||
-      (g.title && g.title.trim().toLowerCase() === result.title.trim().toLowerCase()));
+  // A search or trending result is already in the collection when it has the same RAWG id or title.
+  const owned = (result) => games.some((g) => sameGame(g, result));
 
-  // The message that stands in for the list. It can offer a retry button, or links to the other tabs.
-  function showEmpty(title, text, action, links = false) {
-    empty.querySelector("h3").textContent = title;
-    empty.querySelector("p").textContent = text;
-    const button = empty.querySelector("button");
-    button.hidden = !action;
-    button.onclick = action || null;
-    empty.querySelector(".empty-actions").hidden = !links;
-    empty.hidden = false;
+  // The wishlist entry for a result, when it has one.
+  const wishOf = (result) => wishlist.find((item) => sameGame(item, result));
+
+  // Saving a game needs an account. A visitor is sent to the Account tab, which brings them back
+  // to where they were once they have signed in.
+  function askToSignIn(message) {
+    toast(message);
+    location.hash = "account";
   }
 
-  // The number on the My games tab pops when it changes, so an add is noticed from the other tabs.
-  function setTabCount(count) {
-    const badge = $("tab-count");
+  // Tell the person why something failed. A 401 is left out: the page has already said that the
+  // sign-in ended (see session-ended below).
+  function fail(err) {
+    if (err.status !== 401) toast(err.message, "error");
+  }
+
+  // The number on a tab pops when it changes, so an add is noticed from the other tabs.
+  function setTabCount(badge, count) {
     const changed = badge.textContent !== String(count);
     badge.textContent = count;
     if (changed && badge.dataset.ready) {
@@ -580,11 +674,10 @@ function initGames() {
     badge.dataset.ready = "true";
   }
 
+  // ---------- Collection ----------
+
   function gameCard(game) {
     const title = game.title || "Untitled game";
-    const rating = ratingOf(game);
-    const year = yearOf(game);
-    const genres = genresOf(game);
     const deleteButton = el("button", {
       class: "btn btn-danger btn-sm",
       type: "button",
@@ -609,15 +702,7 @@ function initGames() {
 
     return el("li", { class: "game", "data-id": game.id },
       cover(game),
-      el("div", { class: "game-body" },
-        el("h3", { class: "game-title", text: title }),
-        genres.length ? el("p", { class: "game-meta", text: genres.slice(0, 3).join(" · ") }) : null,
-        el("p", { class: "tags" },
-          rating ? ratingChip(rating) : null,
-          year ? el("span", { class: "chip", text: year }) : null,
-          ...platformTags(game).map(platformChip),
-        ),
-      ),
+      cardBody(game),
       el("div", { class: "actions" },
         el("a", {
           class: "btn btn-ghost btn-sm",
@@ -652,27 +737,34 @@ function initGames() {
 
     $("count-num").textContent = games.length;
     $("count-label").textContent = games.length === 1 ? "game" : "games";
-    setTabCount(games.length);
+    setTabCount($("tab-count"), games.length);
 
     const cards = shown.map(gameCard);
     if (enter) cards.forEach((card, i) => slamIn(card, i));
     list.replaceChildren(...cards);
 
     if (shown.length) empty.hidden = true;
-    else if (games.length) showEmpty("No matches", "Nothing in your collection matches “" + filter.trim() + "”.");
-    else showEmpty("Your collection is empty", "Search RAWG for a game, or add one yourself.", null, true);
+    else if (!user) fillEmpty(empty, { title: "Sign in to see your games", text: "Your collection is saved to your account.", links: SIGN_IN_LINKS });
+    else if (games.length) fillEmpty(empty, { title: "No matches", text: "Nothing in your collection matches “" + filter.trim() + "”." });
+    else fillEmpty(empty, {
+      title: "Your collection is empty",
+      text: "Search RAWG for a game, or add one yourself.",
+      links: [{ text: "Look up online", href: "#lookup", primary: true }, { text: "Add a game", href: "#add" }],
+    });
   }
 
-  async function load() {
+  async function loadGames() {
     list.replaceChildren(...[0, 1, 2].map(() => el("li", { class: "skeleton" })));
     list.setAttribute("aria-busy", "true");
     empty.hidden = true;
     try {
       games = await api("/api/games");
       render(true);
+      renderBrowse();
+      renderAccount();
     } catch (err) {
       list.replaceChildren();
-      showEmpty("Couldn't load your games", err.message, load);
+      if (err.status !== 401) fillEmpty(empty, { title: "Couldn't load your games", text: err.message, retry: loadGames });
     } finally {
       list.removeAttribute("aria-busy");
     }
@@ -683,46 +775,198 @@ function initGames() {
     try {
       await api("/api/games/" + encodeURIComponent(game.id), { method: "DELETE" });
       games = games.filter((g) => g.id !== game.id);
-      render();
-      renderResults();
+      renderAll();
       toast("Removed “" + (game.title || "Untitled game") + "”.");
     } catch (err) {
       button.disabled = false;
-      toast(err.message, "error");
+      fail(err);
     }
   }
 
-  // Put a new game in the collection and make just that card slam in.
-  function collect(game) {
-    games.push(game);
-    render();
-    renderResults();
+  // Put a game in the collection and make just that card slam in. A game that was on the wishlist
+  // is gone from it now, which the server has done as well.
+  function collect(game, message = "Added “" + (game.title || "Untitled game") + "” to your collection.") {
+    games = [...games.filter((g) => g.id !== game.id), game];
+    wishlist = wishlist.filter((item) => !sameGame(item, game));
+    renderAll();
     const card = list.querySelector('[data-id="' + game.id + '"]');
     if (card) slamIn(card);
-    toast("Added “" + (game.title || "Untitled game") + "” to your collection.");
+    toast(message);
   }
 
-  // One search result: its art, what it is, the systems it is on, and a button to keep it.
-  function resultRow(result) {
+  // ---------- Wishlist ----------
+
+  function wishCard(item) {
+    const title = item.title || "Untitled game";
+    const moveButton = el("button", {
+      class: "btn btn-primary btn-sm",
+      type: "button",
+      text: "Move to collection",
+      "aria-label": "Move to your collection: " + title,
+    });
+    const removeButton = el("button", {
+      class: "btn btn-ghost btn-sm",
+      type: "button",
+      text: "Remove",
+      "aria-label": "Remove from your wishlist: " + title,
+    });
+    moveButton.addEventListener("click", () => moveWish(item, moveButton));
+    removeButton.addEventListener("click", () => removeWish(item, removeButton));
+
+    return el("li", { class: "game game-wish", "data-id": item.id },
+      cover(item),
+      cardBody(item),
+      el("div", { class: "actions" }, moveButton, removeButton),
+      detailsPanel(item, {
+        isOpen: openWishes.has(item.id),
+        onToggle: remember(openWishes, item.id),
+      }),
+    );
+  }
+
+  function renderWishlist(enter = false) {
+    setTabCount($("wish-count"), wishlist.length);
+    const cards = [...wishlist].sort((a, b) => b.id - a.id).map(wishCard);
+    if (enter) cards.forEach((card, i) => slamIn(card, i));
+    wishList.replaceChildren(...cards);
+
+    if (cards.length) wishEmpty.hidden = true;
+    else if (!user) fillEmpty(wishEmpty, { title: "Sign in to keep a wishlist", text: "Save the games you want to play next.", links: SIGN_IN_LINKS });
+    else fillEmpty(wishEmpty, {
+      title: "Your wishlist is empty",
+      text: "Tap the heart on a game to save it for later.",
+      links: [{ text: "See what's trending", href: "#home", primary: true }, { text: "Look up online", href: "#lookup" }],
+    });
+  }
+
+  async function loadWishlist() {
+    wishList.replaceChildren(...[0, 1].map(() => el("li", { class: "skeleton" })));
+    wishList.setAttribute("aria-busy", "true");
+    wishEmpty.hidden = true;
+    try {
+      wishlist = await api("/api/wishlist");
+      renderWishlist(true);
+      renderBrowse();
+      renderAccount();
+    } catch (err) {
+      wishList.replaceChildren();
+      if (err.status !== 401) fillEmpty(wishEmpty, { title: "Couldn't load your wishlist", text: err.message, retry: loadWishlist });
+    } finally {
+      wishList.removeAttribute("aria-busy");
+    }
+  }
+
+  // Another tab may have changed things. Fetch both lists again, without the loading placeholders.
+  async function resync() {
+    try {
+      [games, wishlist] = await Promise.all([api("/api/games"), api("/api/wishlist")]);
+      renderAll();
+    } catch {
+      // Whatever went wrong has already been shown.
+    }
+  }
+
+  function actionFailed(err, button) {
+    setBusy(button, false);
+    fail(err);
+    if (err.status === 404 || err.status === 409) resync(); // another tab got there first
+  }
+
+  // Details that were already fetched for a result go along with it when it is saved.
+  async function withFetched(result) {
+    const extra = detailsCache.has(result.rawg_id) ? await detailsCache.get(result.rawg_id).catch(() => null) : null;
+    return { ...result, ...extra };
+  }
+
+  // The heart on a result or a trending game: on the wishlist, or off it.
+  async function toggleWish(result, button) {
+    if (!user) return askToSignIn("Sign in to keep a wishlist.");
+    const existing = wishOf(result);
+    const restoreFocus = holdFocus(button);
+    setBusy(button, true, existing ? "Removing" : "Saving");
+    try {
+      if (existing) {
+        await api("/api/wishlist/" + encodeURIComponent(existing.id), { method: "DELETE" });
+        wishlist = wishlist.filter((item) => item !== existing);
+        toast("Removed “" + result.title + "” from your wishlist.");
+      } else {
+        wishlist.push(await api("/api/wishlist", { method: "POST", body: await withFetched(result) }));
+        toast("Added “" + result.title + "” to your wishlist.");
+      }
+      renderAll();
+      restoreFocus();
+    } catch (err) {
+      actionFailed(err, button);
+    }
+  }
+
+  // Got the game: it leaves the wishlist and joins the collection.
+  async function moveWish(item, button) {
+    setBusy(button, true, "Moving");
+    try {
+      const game = await api("/api/wishlist/" + encodeURIComponent(item.id) + "/collect", { method: "POST" });
+      collect(game, "Moved “" + (game.title || "Untitled game") + "” to your collection.");
+    } catch (err) {
+      actionFailed(err, button);
+    }
+  }
+
+  async function removeWish(item, button) {
+    setBusy(button, true, "Removing");
+    try {
+      await api("/api/wishlist/" + encodeURIComponent(item.id), { method: "DELETE" });
+      wishlist = wishlist.filter((w) => w !== item);
+      renderAll();
+      toast("Removed “" + (item.title || "Untitled game") + "” from your wishlist.");
+    } catch (err) {
+      actionFailed(err, button);
+    }
+  }
+
+  // ---------- Search results and trending ----------
+
+  // The buttons under a search result or a trending game: keep it, or save it for later.
+  function saveActions(result) {
     const have = owned(result);
-    const button = el("button", {
+    const wished = Boolean(wishOf(result));
+
+    const keep = el("button", {
       class: "btn btn-primary btn-sm",
       type: "button",
       text: have ? "In collection" : "Add to collection",
       "aria-label": (have ? "Already in your collection: " : "Add to your collection: ") + result.title,
     });
-    button.disabled = have;
-    if (!have) button.addEventListener("click", () => addResult(result, button));
+    keep.disabled = have;
+    if (!have) keep.addEventListener("click", () => addResult(result, keep));
 
+    // A game that is already owned has no use for the heart.
+    let heart = null;
+    if (!have) {
+      heart = el("button", {
+        class: "btn btn-ghost btn-sm btn-wish" + (wished ? " is-on" : ""),
+        type: "button",
+        "aria-pressed": String(wished),
+        "aria-label": (wished ? "Remove from your wishlist: " : "Add to your wishlist: ") + result.title,
+      },
+        icon(wished ? "heart-solid" : "heart"),
+        el("span", { text: wished ? "On wishlist" : "Wishlist" }),
+      );
+      heart.addEventListener("click", () => toggleWish(result, heart));
+    }
+    return el("div", { class: "save-actions" }, keep, heart);
+  }
+
+  // One search result: its art, what it is, the systems it is on, and the buttons to keep it.
+  function resultRow(result) {
     const rating = ratingOf(result);
     const facts = [yearOf(result), rating && rating.toFixed(1) + " / 5"].filter(Boolean).join(" · ");
     return el("li", { class: "result" },
-      cover(result, true),
+      cover(result, "sm"),
       el("div", { class: "result-body" },
         el("p", { class: "result-title", text: result.title }),
         facts ? el("p", { class: "result-meta", text: facts }) : null,
         el("p", { class: "tags" }, ...platformTags(result).map(platformChip)),
-        button,
+        saveActions(result),
       ),
       // Have a look at the developer and publisher before deciding to keep it.
       detailsPanel(result, {
@@ -736,17 +980,218 @@ function initGames() {
     resultsList.replaceChildren(...results.map(resultRow));
   }
 
+  // One game in the trending list: big art with its rank on the corner, then the same chips and
+  // buttons a search result has.
+  function trendCard(result, rank) {
+    const body = cardBody(result, "trend-body");
+    body.append(saveActions(result));
+    return el("li", { class: "trend" },
+      el("div", { class: "trend-art" },
+        cover(result, "lg"),
+        el("span", { class: "rank", "aria-hidden": "true", text: "#" + rank }), // the list is numbered already
+      ),
+      body,
+      detailsPanel(result, {
+        isOpen: openTrending.has(result.rawg_id),
+        onToggle: remember(openTrending, result.rawg_id),
+      }),
+    );
+  }
+
+  function renderTrending(enter = false) {
+    if (!trending) return; // still loading: leave the placeholders alone
+    const cards = trending.map((game, i) => trendCard(game, i + 1));
+    if (enter) cards.forEach((card, i) => slamIn(card, i));
+    trendList.replaceChildren(...cards);
+  }
+
+  // Search results and trending games both show whether a game is owned or wished for. When that
+  // changes only their buttons are redrawn, so a click doesn't make the rest of the cards blink.
+  function refreshButtons(container, items) {
+    [...container.children].forEach((card, i) => {
+      const old = card.querySelector(".save-actions");
+      if (old && items[i]) old.replaceWith(saveActions(items[i]));
+    });
+  }
+
+  // A button is disabled while its request runs, and then redrawn, which drops the keyboard focus.
+  // Note where the focus was, and give back the function that puts it back once the card's buttons
+  // are redrawn. If the button it was on is gone, the card's Details bar gets it.
+  function holdFocus(button) {
+    if (document.activeElement !== button) return () => {};
+    const card = button.closest("li");
+    const at = [...button.parentElement.children].indexOf(button);
+    return () => {
+      const target = card.querySelector(".save-actions")?.children[at];
+      (target && !target.disabled ? target : card.querySelector("summary"))?.focus();
+    };
+  }
+
+  function renderBrowse() {
+    refreshButtons(resultsList, results);
+    refreshButtons(trendList, trending || []);
+  }
+
+  async function loadTrending() {
+    trending = null;
+    trendList.replaceChildren(...[0, 1, 2, 3].map(() => el("li", { class: "skeleton" })));
+    trendList.setAttribute("aria-busy", "true");
+    trendEmpty.hidden = true;
+    try {
+      trending = await api("/api/trending");
+      renderTrending(true);
+      if (!trending.length) fillEmpty(trendEmpty, { title: "Nothing is trending", text: "RAWG has no recent games to show right now. Check back soon." });
+    } catch (err) {
+      trendList.replaceChildren();
+      fillEmpty(trendEmpty, { title: "Couldn't load trending games", text: err.message, retry: loadTrending });
+    } finally {
+      trendList.removeAttribute("aria-busy");
+    }
+  }
+
   // The backend keeps whatever it is sent, so a search result is saved exactly as it came back.
   // If its details were already opened they go along with it.
   async function addResult(result, button) {
+    if (!user) return askToSignIn("Sign in to add games to your collection.");
+    const restoreFocus = holdFocus(button);
     setBusy(button, true, "Adding");
     try {
-      const extra = detailsCache.has(result.rawg_id) ? await detailsCache.get(result.rawg_id).catch(() => null) : null;
-      collect(await api("/api/games", { method: "POST", body: { ...result, ...extra } }));
+      collect(await api("/api/games", { method: "POST", body: await withFetched(result) }));
+      restoreFocus();
     } catch (err) {
-      setBusy(button, false);
-      toast(err.message, "error");
+      actionFailed(err, button);
     }
+  }
+
+  // ---------- Account ----------
+
+  const forms = { signin: $("signin-form"), signup: $("signup-form") };
+
+  // The Account tab shows one of its two forms. Links that lead there say which one they want.
+  function showMode(mode) {
+    for (const [name, form] of Object.entries(forms)) {
+      form.hidden = name !== mode;
+      $("seg-" + name).setAttribute("aria-pressed", String(name === mode));
+    }
+  }
+
+  document.addEventListener("click", (e) => {
+    const toggle = e.target.closest("[data-mode]");
+    if (toggle) showMode(toggle.dataset.mode);
+  });
+
+  function renderAccount() {
+    $("member-name").textContent = user ? user.username : "";
+    $("member-games").textContent = games.length;
+    $("member-wishes").textContent = wishlist.length;
+    $("member-since").textContent = (user && formatDate(user.createdAt)) || "-";
+  }
+
+  // Everything that depends on who is signed in: the button in the masthead, which forms and
+  // lists are on show, and the person's own collection and wishlist, which are fetched
+  // afresh. A visitor gets signed-out versions of them.
+  function applyUser() {
+    games = [];
+    wishlist = [];
+
+    $("account-name").textContent = user ? user.username : "Sign in";
+    $("account-link").setAttribute("aria-label", user ? "Your account: " + user.username : "Sign in or create an account");
+    $("account-link").hidden = false;
+    $("stat").hidden = !user;
+    $("account-guest").hidden = Boolean(user);
+    $("account-member").hidden = !user;
+    $("filter").closest(".search").hidden = !user;
+    $("home-hint").textContent = HOME_HINT + (user ? "" : " Sign in to save any of them.");
+
+    addForm.hidden = !user;
+    $("add-hint").hidden = !user;
+    if (user) $("add-empty").hidden = true;
+    else fillEmpty($("add-empty"), { title: "Sign in to add games", text: "Games you add are saved to your account.", links: SIGN_IN_LINKS });
+
+    // Drawn first for both kinds of visitor. For a signed-in person the loading placeholders
+    // replace it straight away, before the browser paints.
+    renderAll();
+    if (user) {
+      loadGames();
+      loadWishlist();
+    } else {
+      list.removeAttribute("aria-busy");
+      wishList.removeAttribute("aria-busy");
+    }
+  }
+
+  // Sign in or create an account, then go back to the tab the person came from.
+  async function enter(form, path, body, busyLabel, welcome) {
+    const button = form.querySelector("button[type=submit]");
+    setBusy(button, true, busyLabel);
+    try {
+      user = (await api(path, { method: "POST", body })).user;
+      form.reset();
+      applyUser();
+      toast(welcome(user));
+      location.hash = nav.back();
+    } catch (err) {
+      showFormError(form, err.message);
+    } finally {
+      setBusy(button, false);
+    }
+  }
+
+  forms.signin.addEventListener("submit", (e) => {
+    e.preventDefault();
+    clearFormError(forms.signin);
+    const username = forms.signin.elements.username.value.trim();
+    const password = forms.signin.elements.password.value;
+    if (!username) return showFormError(forms.signin, "Type your username.", "username");
+    if (!password) return showFormError(forms.signin, "Type your password.", "password");
+    enter(forms.signin, "/api/auth/login", { username, password }, "Signing in", (me) => "Welcome back, " + me.username + ".");
+  });
+
+  forms.signup.addEventListener("submit", (e) => {
+    e.preventDefault();
+    clearFormError(forms.signup);
+    const { username, password, confirm: again } = forms.signup.elements;
+    const name = username.value.trim();
+    if (!USERNAME.test(name)) {
+      return showFormError(forms.signup, "Usernames are 3 to 24 letters, numbers, dots, dashes or underscores.", "username");
+    }
+    if (password.value.length < 8) return showFormError(forms.signup, "Use at least 8 characters for the password.", "password");
+    if (password.value !== again.value) return showFormError(forms.signup, "The two passwords don't match.", "confirm");
+    enter(forms.signup, "/api/auth/register", { username: name, password: password.value }, "Creating", (me) => "Welcome to MyGameVault, " + me.username + ".");
+  });
+
+  $("signout").addEventListener("click", async (e) => {
+    const button = e.currentTarget;
+    setBusy(button, true, "Signing out");
+    try {
+      await api("/api/auth/logout", { method: "POST" });
+      user = null;
+      applyUser();
+      location.hash = "home";
+      toast("Signed out.");
+    } catch (err) {
+      toast(err.message, "error");
+    } finally {
+      setBusy(button, false);
+    }
+  });
+
+  // A sign-in can run out while the page is open (api() says so on a 401). The page then falls
+  // back to its signed-out self.
+  window.addEventListener("session-ended", () => {
+    if (!user) return;
+    user = null;
+    applyUser();
+    toast("Your sign-in ended. Sign in again to carry on.", "error");
+  });
+
+  // ---------- Everything else ----------
+
+  function renderAll() {
+    render();
+    renderWishlist();
+    renderBrowse();
+    renderAccount();
   }
 
   addForm.addEventListener("submit", async (e) => {
@@ -801,14 +1246,22 @@ function initGames() {
     render();
   });
 
-  initTabs();
   buildPicker(addForm);
   watchForm(addForm);
   watchForm(lookupForm);
+  watchForm(forms.signin);
+  watchForm(forms.signup);
 
   const flash = takeFlash();
   if (flash) toast(flash);
-  load();
+
+  // The trending list is for everyone, so it loads while the page finds out who is signed in.
+  // If the server can't be asked, the page carries on as a visitor's.
+  loadTrending();
+  api("/api/auth/me")
+    .then((me) => { user = me.user; })
+    .catch(() => { user = null; })
+    .then(applyUser);
 }
 
 // ---------- Edit page ----------
@@ -833,10 +1286,8 @@ function initEdit() {
   const state = $("edit-state");
   let original;
 
-  function showState(title, text) {
-    state.querySelector("h3").textContent = title;
-    state.querySelector("p").textContent = text;
-    state.hidden = false;
+  function showState(title, text, links) {
+    fillEmpty(state, { title, text, links });
     form.hidden = true;
   }
 
@@ -859,6 +1310,11 @@ function initEdit() {
       form.hidden = false;
       form.elements.title.focus();
     } catch (err) {
+      if (err.status === 401) {
+        return showState("Sign in to edit your games", "Your collection is saved to your account.", [
+          { text: "Sign in", href: "index.html#account", primary: true },
+        ]);
+      }
       showState("Couldn't load this game", err.message);
     }
   }
@@ -889,7 +1345,7 @@ function initEdit() {
     try {
       const game = await api("/api/games/" + encodeURIComponent(id), { method: "PUT", body: changes });
       setFlash("Saved changes to “" + (game.title || "Untitled game") + "”.");
-      window.location.href = "index.html";
+      window.location.href = "index.html#collection";
     } catch (err) {
       setBusy(button, false);
       showFormError(form, err.message);

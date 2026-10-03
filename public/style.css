@@ -143,6 +143,71 @@ a.brand:focus-visible {
   text-transform: uppercase;
 }
 
+/* The account button sits above the game count. It reads "Sign in" for a visitor and shows the
+   username once someone is signed in. */
+.masthead-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 26px;
+}
+
+.account-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  padding: 8px 16px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--black);
+  background: var(--white);
+  border: var(--bw) solid var(--black);
+  box-shadow: 4px 4px 0 var(--amber);
+  transition: transform 0.1s, box-shadow 0.1s, background 0.1s;
+}
+
+.account-link:hover {
+  background: var(--amber);
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--white);
+}
+
+.account-link:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 var(--white);
+}
+
+.account-link:focus-visible {
+  outline: var(--bw) solid var(--amber);
+  outline-offset: 4px;
+}
+
+.account-link .icon {
+  width: 20px;
+  height: 20px;
+  --sw: 4.4;
+}
+
+.account-link span {
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .masthead-side {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 20px 28px;
+  }
+}
+
 /* ---------- Layout ---------- */
 
 .shell {
@@ -167,27 +232,41 @@ a.brand:focus-visible {
   border-bottom: 4px solid var(--black);
 }
 
+/* The bar is its own size container, so the tabs change layout with the room they have (the edit
+   page's bar is narrower than the games page's, whatever the window). */
 .tabbar .wrap {
+  container-type: inline-size;
   align-items: center;
   justify-content: flex-start;
-  padding: 12px 0 14px;
+  padding: 6px 0 4px;
 }
 
+/* If the tabs still don't fit, the strip scrolls sideways. It has room inside for the tabs'
+   shadows and the count badges, which would otherwise be cut off. */
 .tabs {
+  position: relative;
   display: flex;
   gap: 12px;
   width: 100%;
+  padding: 8px 8px 10px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .tab {
   position: relative;
   display: inline-flex;
-  flex: 0 1 auto;
+  flex: none;
   align-items: center;
   justify-content: center;
   gap: 10px;
   min-width: 0;
   padding: 10px 18px;
+  white-space: nowrap;
   font: inherit;
   font-size: 0.85rem;
   font-weight: 800;
@@ -248,18 +327,22 @@ a.brand:focus-visible {
   animation: bump 0.3s;
 }
 
-@media (max-width: 560px) {
+/* Five tabs need about 920px in a row, a little more once the counts reach three digits. With less
+   room than that each one stacks its icon above its label and they share the width equally, down
+   to 76px apiece. Below that the strip scrolls. */
+@container (max-width: 999px) {
   .tabs {
     gap: 8px;
+    padding-top: 12px;
   }
 
-  /* Three equal tabs, each with its icon above the label. */
   .tab {
-    flex: 1 1 0;
+    flex: 1 0 auto;
     flex-direction: column;
     gap: 4px;
-    padding: 8px 4px;
-    font-size: 0.64rem;
+    min-width: 76px;
+    padding: 8px 8px;
+    font-size: 0.66rem;
     letter-spacing: 0.03em;
     text-align: center;
   }
@@ -314,6 +397,16 @@ a.brand:focus-visible {
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+/* A short note at the right end of a panel bar. */
+.bar-note {
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gray);
 }
 
 .panel-bar h2::before,
@@ -431,6 +524,57 @@ a.brand:focus-visible {
 /* A search box is easier to use at a sensible width than stretched across the whole panel. */
 #lookup-form {
   max-width: 640px;
+}
+
+.account-form {
+  max-width: 420px;
+}
+
+/* Who is signed in, and a few numbers about what they have saved. */
+.member-name {
+  margin: 0 0 24px;
+  font-size: clamp(2rem, 7vw, 3rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  overflow-wrap: anywhere;
+}
+
+.member-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 16px;
+  margin: 0 0 28px;
+}
+
+.member-stat {
+  padding: 12px 16px 14px;
+  background: var(--gray);
+  border: var(--bw) solid var(--black);
+  box-shadow: var(--shadow-sm);
+}
+
+.member-stat dt {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--navy);
+}
+
+.member-stat dd {
+  margin: 4px 0 0;
+  font-size: 2.2rem;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.member-stat dd.member-date {
+  font-size: 1.3rem;
+  line-height: 2.2rem;
+  letter-spacing: -0.01em;
 }
 
 label {
@@ -766,6 +910,42 @@ input[aria-invalid="true"]:focus-visible {
   width: 100%;
 }
 
+/* The heart on a result or trending game. Filled navy with an amber heart once it is on the wishlist. */
+.btn-wish .icon {
+  width: 16px;
+  height: 16px;
+  --sw: 5;
+}
+
+.btn-wish.is-on,
+.btn-wish.is-on:hover:not(:disabled) {
+  color: var(--white);
+  background: var(--navy);
+}
+
+.btn-wish.is-on .icon {
+  color: var(--amber);
+}
+
+/* Sign in / Create account: two buttons side by side, the chosen one pushed in and amber like the current tab. */
+.seg {
+  display: flex;
+  gap: 12px;
+  max-width: 420px;
+  margin-bottom: 24px;
+}
+
+.seg .btn {
+  flex: 1;
+}
+
+.seg .btn[aria-pressed="true"],
+.seg .btn[aria-pressed="true"]:hover:not(:disabled) {
+  background: var(--amber);
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--black);
+}
+
 .btn.is-busy::before {
   content: "";
   flex: none;
@@ -861,6 +1041,22 @@ input[aria-invalid="true"]:focus-visible {
   width: 30px;
   height: 30px;
   --sw: 3.6;
+}
+
+/* The poster at the top of a trending card: the width of the card, in the proportions RAWG crops to. */
+.cover-lg {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  border: 0;
+  border-bottom: var(--bw) solid var(--black);
+  box-shadow: none;
+}
+
+.cover-lg .icon {
+  width: 72px;
+  height: 72px;
+  --sw: 2.6;
 }
 
 .game-title,
@@ -1126,8 +1322,94 @@ input[aria-invalid="true"]:focus-visible {
   margin-top: 8px;
 }
 
-.result-body > .btn {
-  margin-top: 10px;
+/* Keep it, or save it for later. These sit under a search result and a trending game. */
+.save-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* A wishlist card has two wide buttons, so they get a row of their own under the cover and title. */
+.game-wish {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.game-wish .actions {
+  grid-column: 1 / -1;
+}
+
+.game-wish .actions .btn-primary {
+  flex: 1;
+}
+
+/* ---------- Trending ---------- */
+
+/* The home page's list: a grid of poster cards, ranked from #1. */
+.trending {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+  align-items: start; /* a card that opens its details grows alone, without stretching its neighbours */
+  gap: 24px 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trending .skeleton {
+  height: 300px;
+}
+
+.trend {
+  --pad: 14px;
+  display: flex;
+  flex-direction: column;
+  background: var(--gray);
+  border: var(--bw) solid var(--black);
+  box-shadow: 5px 5px 0 var(--black);
+  transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
+}
+
+.trend:hover {
+  background: var(--white);
+  box-shadow: 8px 8px 0 var(--black);
+  transform: translate(-3px, -3px);
+}
+
+.trend.enter {
+  animation: slam 0.4s cubic-bezier(0.2, 0.9, 0.3, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+.trend-art {
+  position: relative;
+}
+
+/* The rank sits on the corner of the poster like a tab on a file. */
+.rank {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  padding: 2px 12px 2px 10px;
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1.3;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--black);
+  background: var(--amber);
+  border-right: var(--bw) solid var(--black);
+  border-bottom: var(--bw) solid var(--black);
+}
+
+.trend-body {
+  padding: var(--pad);
+}
+
+/* The details bar runs edge to edge along the foot of the card, so it needs no negative margin here. */
+.trend > .more {
+  margin: 0;
 }
 
 .result-title {

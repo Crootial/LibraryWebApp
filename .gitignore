@@ -1,0 +1,5 @@
+# Local database files that hold accounts, sign-ins and each person's wishlist.
+# They are created when the server first needs them. Password hashes must never be committed.
+users.json
+sessions.json
+wishlist.json
