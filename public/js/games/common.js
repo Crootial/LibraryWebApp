@@ -7,6 +7,7 @@ const store = {
   trending: null,
   filter: "",
   results: [],
+  returnTo: null,
   back: () => "home",
 };
 

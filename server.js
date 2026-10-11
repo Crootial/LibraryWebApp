@@ -357,6 +357,153 @@ app.get("/api/lookup/:id", async (req, res) => {
   }
 });
 
+// Game forums: every game has its own thread. Anyone can read it; posting and voting need a real account.
+const FORUM_MAX_LENGTH = 1000;
+const FORUM_MAX_SHOWN = 200;
+const FORUM_BURST = { count: 5, windowMs: 60 * 1000 };
+
+// A thread is keyed by RAWG ID, or by normalized title for games added by hand.
+function forumKey(raw) {
+  const key = String(raw ?? "").trim();
+  if (/^rawg-\d{1,9}$/.test(key)) return key;
+  if (key.startsWith("title-")) {
+    const title = key.slice(6).toLowerCase().replace(/\s+/g, " ").trim().slice(0, 120);
+    if (title && !/[\u0000-\u001f]/.test(title)) return "title-" + title;
+  }
+  return null;
+}
+
+// Guests and signed-out visitors get a 403, not a 401, so the page does not think a sign-in ended.
+function requireMember(req, res, next) {
+  try {
+    const user = auth.currentUser(req);
+    if (!user || user.isGuest) {
+      return res.status(403).json({ error: "Sign in or create an account to join the forum." });
+    }
+    req.user = user;
+    res.set("Cache-Control", "no-store");
+    next();
+  } catch (error) {
+    console.error("Forum Session Error:", error);
+    res.status(500).json({ error: "Failed to check your sign-in" });
+  }
+}
+
+// Votes live on the comment as { userId: 1 | -1 }; the page only gets totals and its own vote.
+function forumView(comment, viewer) {
+  let likes = 0;
+  let dislikes = 0;
+  for (const value of Object.values(comment.votes ?? {})) {
+    if (value === 1) likes++;
+    else if (value === -1) dislikes++;
+  }
+  return {
+    id: comment.id,
+    username: comment.username,
+    body: comment.body,
+    createdAt: comment.createdAt,
+    likes,
+    dislikes,
+    myVote: viewer ? comment.votes?.[viewer.id] ?? 0 : 0,
+    mine: Boolean(viewer && comment.userId === viewer.id),
+  };
+}
+
+app.get("/api/forum/:key/comments", (req, res) => {
+  try {
+    const key = forumKey(req.params.key);
+    if (!key) return res.status(400).json({ error: "That game has no forum." });
+
+    const viewer = auth.currentUser(req);
+    const comments = db.comments.read()
+      .filter((c) => c.gameKey === key)
+      .sort((a, b) => b.id - a.id)
+      .slice(0, FORUM_MAX_SHOWN);
+    res.set("Cache-Control", "no-store");
+    res.json(comments.map((c) => forumView(c, viewer)));
+  } catch (error) {
+    console.error("Forum Read Error:", error);
+    res.status(500).json({ error: "Failed to load the comments" });
+  }
+});
+
+app.post("/api/forum/:key/comments", requireMember, (req, res) => {
+  try {
+    const key = forumKey(req.params.key);
+    if (!key) return res.status(400).json({ error: "That game has no forum." });
+
+    const text = typeof req.body?.body === "string"
+      ? req.body.body.replace(/\r\n?/g, "\n").replace(/\n{3,}/g, "\n\n").trim()
+      : "";
+    if (!text) return res.status(400).json({ error: "Write something before you post." });
+    if (text.length > FORUM_MAX_LENGTH) {
+      return res.status(400).json({ error: "Comments can be up to " + FORUM_MAX_LENGTH + " characters." });
+    }
+
+    const comments = db.comments.read();
+    const since = Date.now() - FORUM_BURST.windowMs;
+    const recent = comments.filter((c) => c.userId === req.user.id && Date.parse(c.createdAt) > since);
+    if (recent.length >= FORUM_BURST.count) {
+      return res.status(429).json({ error: "You're posting fast. Wait a minute, then try again." });
+    }
+
+    const comment = {
+      id: db.newId(comments),
+      gameKey: key,
+      userId: req.user.id,
+      username: req.user.username,
+      body: text,
+      createdAt: new Date().toISOString(),
+      votes: {},
+    };
+    comments.push(comment);
+    db.comments.write(comments);
+    res.status(201).json(forumView(comment, req.user));
+  } catch (error) {
+    console.error("Forum Post Error:", error);
+    res.status(500).json({ error: "Failed to post your comment" });
+  }
+});
+
+// Set (not toggle) a vote so a double click or a retry cannot flip it: 1 likes, -1 dislikes, 0 clears.
+app.post("/api/forum/comments/:id/vote", requireMember, (req, res) => {
+  try {
+    const value = req.body?.value;
+    if (value !== 1 && value !== -1 && value !== 0) {
+      return res.status(400).json({ error: "A vote is 1 (like), -1 (dislike) or 0 (clear)." });
+    }
+
+    const comments = db.comments.read();
+    const comment = comments.find((c) => String(c.id) === String(req.params.id));
+    if (!comment) return res.status(404).json({ error: "That comment is gone." });
+
+    comment.votes = comment.votes ?? {};
+    if (value === 0) delete comment.votes[req.user.id];
+    else comment.votes[req.user.id] = value;
+    db.comments.write(comments);
+    res.json(forumView(comment, req.user));
+  } catch (error) {
+    console.error("Forum Vote Error:", error);
+    res.status(500).json({ error: "Failed to save your vote" });
+  }
+});
+
+app.delete("/api/forum/comments/:id", requireMember, (req, res) => {
+  try {
+    const comments = db.comments.read();
+    const rest = comments.filter((c) => !(c.userId === req.user.id && String(c.id) === String(req.params.id)));
+    if (rest.length === comments.length) {
+      return res.status(404).json({ error: "Comment not found" });
+    }
+
+    db.comments.write(rest);
+    res.json({ message: "Comment deleted" });
+  } catch (error) {
+    console.error("Forum Delete Error:", error);
+    res.status(500).json({ error: "Failed to delete the comment" });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {

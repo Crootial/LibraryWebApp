@@ -3,3 +3,7 @@
 users.json
 sessions.json
 wishlist.json
+comments.json
+
+# Installed packages: run npm install after cloning
+node_modules/

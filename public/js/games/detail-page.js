@@ -324,8 +324,10 @@ function renderGameDetailView() {
       el("nav", { class: "detail-breadcrumb", "aria-label": "Breadcrumb" },
         el("a", { class: "bc-link", href: "#home", text: "Home" }),
         el("span", { class: "bc-sep", text: "/" }),
-        el("a", { class: "bc-link", href: "#" + previousTabName, text: prevTabLabel }),
-        el("span", { class: "bc-sep", text: "/" }),
+        ...(previousTabName === "home" ? [] : [
+          el("a", { class: "bc-link", href: "#" + previousTabName, text: prevTabLabel }),
+          el("span", { class: "bc-sep", text: "/" }),
+        ]),
         el("strong", { class: "bc-current", text: title }),
       ),
     ),
@@ -466,7 +468,7 @@ function renderGameDetailView() {
   );
   panelBody.append(heroSection);
 
-  // 3. Two-Column Layout (Anti-clutter, no community breakdown, no system requirements dropdown)
+  // 3. Two-Column Layout (Anti-clutter, no community breakdown)
   const layoutCols = el("div", { class: "detail-grid-cols" });
 
   // LEFT COLUMN: About & Game Details
@@ -555,8 +557,8 @@ function renderGameDetailView() {
   });
 
   if (platformsWithReqs.length > 0) {
-    const reqsCard = el("div", { class: "detail-card" },
-      el("h3", { class: "detail-card-title", text: "System Requirements" }),
+    const reqsCard = el("details", { class: "detail-card reqs-dropdown" },
+      el("summary", { class: "detail-card-title reqs-summary", text: "System Requirements" }),
       el("div", { class: "detail-reqs-content" },
         ...platformsWithReqs.map((p) => {
           const req = p.requirements;
@@ -578,24 +580,28 @@ function renderGameDetailView() {
     );
     colLeft.append(reqsCard);
   } else if (platformList.some((p) => p.toLowerCase().includes("pc") || p.toLowerCase().includes("windows"))) {
-    const reqsCard = el("div", { class: "detail-card" },
-      el("h3", { class: "detail-card-title", text: "System Requirements" }),
+    const reqsCard = el("details", { class: "detail-card reqs-dropdown" },
+      el("summary", { class: "detail-card-title reqs-summary", text: "System Requirements" }),
       el("div", { class: "detail-reqs-content" },
         el("div", { class: "reqs-platform-block" },
           el("h4", { class: "reqs-platform-name", text: "PC / Windows" }),
           el("div", { class: "reqs-sub" },
             el("strong", { text: "Minimum" }),
-            el("p", { class: "reqs-text", text: "OS: Windows 10/11 (64-bit)\\nProcessor: Intel Core i5-2500K / AMD FX-6300\\nMemory: 8 GB RAM\\nGraphics: NVIDIA GeForce GTX 770 / AMD Radeon R9 280\\nStorage: 50 GB available space" }),
+            el("p", { class: "reqs-text", text: "OS: Windows 10/11 (64-bit)\nProcessor: Intel Core i5-2500K / AMD FX-6300\nMemory: 8 GB RAM\nGraphics: NVIDIA GeForce GTX 770 / AMD Radeon R9 280\nStorage: 50 GB available space" }),
           ),
           el("div", { class: "reqs-sub" },
             el("strong", { text: "Recommended" }),
-            el("p", { class: "reqs-text", text: "OS: Windows 10/11 (64-bit)\\nProcessor: Intel Core i7-6700K / AMD Ryzen 5 1600\\nMemory: 16 GB RAM\\nGraphics: NVIDIA GeForce GTX 1060 / AMD Radeon RX 580\\nStorage: 50 GB available space (SSD)" }),
+            el("p", { class: "reqs-text", text: "OS: Windows 10/11 (64-bit)\nProcessor: Intel Core i7-6700K / AMD Ryzen 5 1600\nMemory: 16 GB RAM\nGraphics: NVIDIA GeForce GTX 1060 / AMD Radeon RX 580\nStorage: 50 GB available space (SSD)" }),
           ),
         ),
       ),
     );
     colLeft.append(reqsCard);
   }
+
+  // Forum card: comments that signed-in players can like and dislike, under the system requirements
+  const forumCard = buildForumCard(game, title);
+  if (forumCard) colLeft.append(forumCard);
 
   layoutCols.append(colLeft);
 

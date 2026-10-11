@@ -2251,4 +2251,333 @@ input[aria-invalid="true"]:focus-visible {
   border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
+.reqs-dropdown > .reqs-summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+}
+.reqs-dropdown > .reqs-summary::-webkit-details-marker { display: none; }
+.reqs-dropdown > .reqs-summary::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.15s;
+}
+.reqs-dropdown[open] > .reqs-summary::after { transform: rotate(-135deg); }
+.reqs-dropdown[open] > .reqs-summary { margin-bottom: 12px; }
 
+/* ---------- Game forum ---------- */
+
+.forum-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.forum-count {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 1px 8px;
+  font-size: 0.8rem;
+  letter-spacing: 0;
+  vertical-align: middle;
+  color: var(--black);
+  background: var(--amber);
+  border: 2px solid var(--black);
+}
+
+.forum-count:empty {
+  display: none;
+}
+
+.forum-sort {
+  display: flex;
+  gap: 8px;
+}
+
+/* The chosen sort is pushed in and amber, like the Sign in / Create account buttons. */
+.forum-sort .btn[aria-pressed="true"],
+.forum-sort .btn[aria-pressed="true"]:hover:not(:disabled) {
+  background: var(--amber);
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--black);
+}
+
+.forum-hint {
+  margin-bottom: 16px;
+}
+
+.forum-form {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 22px;
+}
+
+.forum-input {
+  display: block;
+  width: 100%;
+  min-height: 96px;
+  padding: 11px 14px;
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--black);
+  background: var(--white);
+  border: var(--bw) solid var(--black);
+  border-radius: 0;
+  outline: none;
+  resize: vertical;
+  transition: transform 0.1s, box-shadow 0.1s, background 0.1s;
+}
+
+.forum-input::placeholder {
+  color: rgba(20, 33, 61, 0.65);
+  font-weight: 500;
+}
+
+.forum-input:focus-visible {
+  background: var(--amber);
+  box-shadow: var(--shadow-sm);
+  transform: translate(-2px, -2px);
+}
+
+.forum-input:focus-visible::placeholder {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.forum-form-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.forum-counter {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--navy);
+  font-variant-numeric: tabular-nums;
+}
+
+.forum-counter.is-near {
+  padding: 1px 6px;
+  color: var(--black);
+  background: var(--amber);
+  border: 2px solid var(--black);
+}
+
+.forum-signin {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 22px;
+  padding: 14px 16px;
+  background: var(--gray);
+  border: var(--bw) solid var(--black);
+  box-shadow: var(--shadow-sm);
+}
+
+.forum-signin p {
+  margin: 0;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.forum-status {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 18px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--navy);
+  background: var(--gray);
+  border: var(--bw) dashed var(--black);
+}
+
+.forum-status p {
+  margin: 0;
+}
+
+.forum-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.forum-comment {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px;
+  background: var(--white);
+  border: 2px solid var(--black);
+}
+
+/* Your own comments get an amber edge. */
+.forum-comment.is-mine {
+  box-shadow: inset 6px 0 0 var(--amber);
+}
+
+.forum-avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  font-size: 1.1rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: var(--amber);
+  background: var(--navy);
+  border: 2px solid var(--black);
+}
+
+.forum-main {
+  min-width: 0;
+}
+
+.forum-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin-bottom: 4px;
+}
+
+.forum-author {
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.forum-you {
+  padding: 0 6px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--black);
+  background: var(--amber);
+  border: 2px solid var(--black);
+}
+
+.forum-time {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #666;
+}
+
+.forum-text {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: #222;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.forum-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.forum-delete {
+  margin-left: auto;
+}
+
+.vote-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 800;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  color: var(--black);
+  background: var(--white);
+  border: 2px solid var(--black);
+  border-radius: 0;
+  box-shadow: 2px 2px 0 var(--black);
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s, background 0.1s, color 0.1s;
+}
+
+.vote-btn .icon {
+  width: 16px;
+  height: 16px;
+  --sw: 5;
+}
+
+.vote-btn:hover {
+  background: var(--gray);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--black);
+}
+
+.vote-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--black);
+}
+
+.vote-btn:focus-visible {
+  outline: var(--bw) solid var(--black);
+  outline-offset: 3px;
+}
+
+/* A like turns amber; a dislike turns navy with an amber icon. No red in this palette. */
+.vote-up.is-on,
+.vote-up.is-on:hover {
+  background: var(--amber);
+}
+
+.vote-down.is-on,
+.vote-down.is-on:hover {
+  color: var(--white);
+  background: var(--navy);
+}
+
+.vote-down.is-on .icon {
+  color: var(--amber);
+}
+
+.vote-btn.is-pending {
+  cursor: progress;
+}
+
+.forum-more-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+@media (max-width: 480px) {
+  .forum-comment {
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .forum-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.95rem;
+  }
+}

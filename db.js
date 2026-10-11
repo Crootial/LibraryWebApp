@@ -41,6 +41,7 @@ exports.write = library.write;
 exports.wishlist = table("wishlist.json");
 exports.users = table("users.json");
 exports.sessions = table("sessions.json");
+exports.comments = table("comments.json");
 
 // Monotonic ID generation: timestamp advanced past highest existing ID to avoid collisions
 exports.newId = (list) =>

@@ -282,4 +282,4 @@ router.get("/me", (req, res) => {
   }
 });
 
-module.exports = { router, requireAuth };
+module.exports = { router, requireAuth, currentUser };

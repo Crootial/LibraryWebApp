@@ -51,7 +51,10 @@ async function signInWith(form, path, body, busyLabel, welcome) {
     form.reset();
     applyUser();
     toast(welcome(store.user));
-    location.hash = store.back();
+    // A forum prompt sends people here; after signing in they go back to that game, not to the last tab
+    const returnTo = store.returnTo;
+    store.returnTo = null;
+    location.hash = returnTo || store.back();
   } catch (err) {
     showFormError(form, err.message);
   } finally {
