@@ -43,6 +43,35 @@ exports.users = table("users.json");
 exports.sessions = table("sessions.json");
 exports.comments = table("comments.json");
 
+// Profile pictures are files, not JSON: one JPEG per account, named after the account's id.
+const AVATAR_DIR = path.join(DIR, "avatars");
+
+function avatarFile(userId) {
+  if (!/^[\w-]{1,64}$/.test(String(userId))) throw new Error("Not an account id: " + userId);
+  return path.join(AVATAR_DIR, userId + ".jpg");
+}
+
+exports.avatars = {
+  read(userId) {
+    try {
+      return fs.readFileSync(avatarFile(userId));
+    } catch (error) {
+      if (error.code === "ENOENT") return null;
+      throw error;
+    }
+  },
+  write(userId, bytes) {
+    const file = avatarFile(userId);
+    fs.mkdirSync(AVATAR_DIR, { recursive: true });
+    // Write beside the old picture, then swap, so nobody ever reads half a file
+    fs.writeFileSync(file + ".tmp", bytes);
+    fs.renameSync(file + ".tmp", file);
+  },
+  remove(userId) {
+    fs.rmSync(avatarFile(userId), { force: true });
+  },
+};
+
 // Monotonic ID generation: timestamp advanced past highest existing ID to avoid collisions
 exports.newId = (list) =>
   list.reduce((next, item) => Math.max(next, Number(item.id) + 1 || 0), Date.now());

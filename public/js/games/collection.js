@@ -106,12 +106,17 @@ async function loadGames() {
   $("games-empty").hidden = true;
   try {
     store.games = await api("/api/games");
+    store.loaded.games = true;
     renderCollection(true);
     renderBrowse();
     renderAccount();
   } catch (err) {
     list.replaceChildren();
-    if (err.status !== 401) fillEmpty($("games-empty"), { title: "Couldn't load your games", text: err.message, retry: loadGames });
+    if (err.status !== 401) {
+      store.loaded.games = "failed";
+      fillEmpty($("games-empty"), { title: "Couldn't load your games", text: err.message, retry: loadGames });
+      renderAccount();
+    }
   } finally {
     list.removeAttribute("aria-busy");
   }

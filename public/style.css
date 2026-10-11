@@ -192,11 +192,18 @@ a.brand:focus-visible {
   --sw: 4.4;
 }
 
-.account-link span {
+.account-link > span:last-child {
   max-width: 18ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The icon, or the player's picture once they have set one */
+.account-pic {
+  display: grid;
+  flex: none;
+  place-items: center;
 }
 
 @media (max-width: 560px) {
@@ -2434,19 +2441,6 @@ input[aria-invalid="true"]:focus-visible {
   box-shadow: inset 6px 0 0 var(--amber);
 }
 
-.forum-avatar {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  font-size: 1.1rem;
-  font-weight: 900;
-  text-transform: uppercase;
-  color: var(--amber);
-  background: var(--navy);
-  border: 2px solid var(--black);
-}
-
 .forum-main {
   min-width: 0;
 }
@@ -2575,9 +2569,217 @@ input[aria-invalid="true"]:focus-visible {
     padding: 12px;
   }
 
-  .forum-avatar {
+  .forum-comment .avatar {
     width: 32px;
     height: 32px;
     font-size: 0.95rem;
+  }
+}
+
+/* ---------- Profile pictures ---------- */
+
+/* A player's picture. With no photo it is a navy tile with the first letter of their name; the photo,
+   when there is one, is laid over the tile and hides it. */
+.avatar {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  overflow: hidden;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--amber);
+  background: var(--navy);
+  border: 2px solid var(--black);
+}
+
+.avatar img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-sm {
+  width: 24px;
+  height: 24px;
+  font-size: 0.8rem;
+}
+
+.avatar-md {
+  width: 40px;
+  height: 40px;
+  font-size: 1.1rem;
+}
+
+.avatar-lg {
+  width: 132px;
+  height: 132px;
+  font-size: 3.6rem;
+  border: var(--bw) solid var(--black);
+  box-shadow: var(--shadow-sm);
+}
+
+/* A picture that is picked but not saved yet is dashed and lifted, so it does not look final. */
+.avatar-lg.is-draft {
+  outline: 3px dashed var(--black);
+  outline-offset: 4px;
+  box-shadow: 6px 6px 0 var(--amber);
+}
+
+/* ---------- Profile ---------- */
+
+.profile-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 22px 28px;
+  margin-bottom: 28px;
+}
+
+.profile-avatar {
+  flex: none;
+  padding: 0 6px 6px 0;
+}
+
+.profile-id {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.profile-id .hint {
+  margin-bottom: 4px;
+}
+
+.profile-id .member-name {
+  margin-bottom: 12px;
+}
+
+.profile-note {
+  margin: 0 0 14px;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.profile-help {
+  margin: 12px 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #555;
+}
+
+/* The collection and the wishlist, as shelves of covers that open the game's details */
+.shelf-section {
+  margin: 0 0 32px;
+}
+
+.shelf-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin: 0 0 16px;
+  padding-bottom: 10px;
+  border-bottom: var(--bw) solid var(--black);
+}
+
+.shelf-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr));
+  gap: 20px 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shelf .skeleton {
+  height: 150px;
+}
+
+.shelf-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--gray);
+  border: var(--bw) solid var(--black);
+  box-shadow: 4px 4px 0 var(--black);
+  transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
+}
+
+.shelf-item:hover {
+  background: var(--white);
+  box-shadow: 6px 6px 0 var(--black);
+  transform: translate(-2px, -2px);
+}
+
+.shelf-item .cover-lg .icon {
+  width: 44px;
+  height: 44px;
+}
+
+.shelf-body {
+  min-width: 0;
+  padding: 8px 10px 10px;
+}
+
+.shelf-title {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.shelf-meta {
+  margin: 3px 0 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.shelf-note {
+  margin: 0;
+  padding: 14px 16px;
+  font-weight: 600;
+  color: var(--navy);
+  background: var(--gray);
+  border: var(--bw) dashed var(--black);
+}
+
+@media (max-width: 520px) {
+  .shelf {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 14px;
+  }
+
+  .avatar-lg {
+    width: 104px;
+    height: 104px;
+    font-size: 2.8rem;
   }
 }

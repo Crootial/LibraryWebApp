@@ -8,6 +8,7 @@ function renderAll() {
 function initGames() {
   store.back = initTabs().back;
   initAccount();
+  initProfile();
   initAddForm();
   initLookupForm();
   initFilter();

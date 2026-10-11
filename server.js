@@ -3,6 +3,7 @@ const cors = require("cors");
 const axios = require("axios");
 const db = require("./db");
 const auth = require("./auth");
+const profile = require("./profile");
 
 const app = express();
 
@@ -15,6 +16,7 @@ app.use(express.static("public"));
 const RAWG_API_KEY = process.env.RAWG_API_KEY || "d75605f6b2254c428360a0a491247add";
 
 app.use("/api/auth", auth.router);
+app.use("/api/profile", profile.router);
 
 const mine = (req) => (item) => item.userId === req.user.id;
 
@@ -373,24 +375,14 @@ function forumKey(raw) {
   return null;
 }
 
-// Guests and signed-out visitors get a 403, not a 401, so the page does not think a sign-in ended.
-function requireMember(req, res, next) {
-  try {
-    const user = auth.currentUser(req);
-    if (!user || user.isGuest) {
-      return res.status(403).json({ error: "Sign in or create an account to join the forum." });
-    }
-    req.user = user;
-    res.set("Cache-Control", "no-store");
-    next();
-  } catch (error) {
-    console.error("Forum Session Error:", error);
-    res.status(500).json({ error: "Failed to check your sign-in" });
-  }
-}
+const requireMember = auth.requireMember("join the forum");
+
+// Each author's current account, looked up when a comment is read, so a new profile picture also
+// shows on the comments written before it.
+const forumAuthors = () => new Map(db.users.read().map((user) => [user.id, user]));
 
 // Votes live on the comment as { userId: 1 | -1 }; the page only gets totals and its own vote.
-function forumView(comment, viewer) {
+function forumView(comment, viewer, authors) {
   let likes = 0;
   let dislikes = 0;
   for (const value of Object.values(comment.votes ?? {})) {
@@ -400,6 +392,7 @@ function forumView(comment, viewer) {
   return {
     id: comment.id,
     username: comment.username,
+    avatarAt: authors.get(comment.userId)?.avatarAt ?? null,
     body: comment.body,
     createdAt: comment.createdAt,
     likes,
@@ -420,7 +413,8 @@ app.get("/api/forum/:key/comments", (req, res) => {
       .sort((a, b) => b.id - a.id)
       .slice(0, FORUM_MAX_SHOWN);
     res.set("Cache-Control", "no-store");
-    res.json(comments.map((c) => forumView(c, viewer)));
+    const authors = forumAuthors();
+    res.json(comments.map((c) => forumView(c, viewer, authors)));
   } catch (error) {
     console.error("Forum Read Error:", error);
     res.status(500).json({ error: "Failed to load the comments" });
@@ -458,7 +452,7 @@ app.post("/api/forum/:key/comments", requireMember, (req, res) => {
     };
     comments.push(comment);
     db.comments.write(comments);
-    res.status(201).json(forumView(comment, req.user));
+    res.status(201).json(forumView(comment, req.user, forumAuthors()));
   } catch (error) {
     console.error("Forum Post Error:", error);
     res.status(500).json({ error: "Failed to post your comment" });
@@ -481,7 +475,7 @@ app.post("/api/forum/comments/:id/vote", requireMember, (req, res) => {
     if (value === 0) delete comment.votes[req.user.id];
     else comment.votes[req.user.id] = value;
     db.comments.write(comments);
-    res.json(forumView(comment, req.user));
+    res.json(forumView(comment, req.user, forumAuthors()));
   } catch (error) {
     console.error("Forum Vote Error:", error);
     res.status(500).json({ error: "Failed to save your vote" });

@@ -199,7 +199,7 @@ function forumCommentItem(thread, comment, signedIn) {
   const name = comment.username || "Player";
   const when = forumAgo(comment.createdAt);
   return el("li", { class: "forum-comment" + (comment.mine ? " is-mine" : ""), "data-id": comment.id },
-    el("div", { class: "forum-avatar", "aria-hidden": "true", text: name.charAt(0) }),
+    avatar(name, comment.avatarAt, "md"),
     el("div", { class: "forum-main" },
       el("div", { class: "forum-meta" },
         el("strong", { class: "forum-author", text: name }),

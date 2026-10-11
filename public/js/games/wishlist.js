@@ -47,12 +47,17 @@ async function loadWishlist() {
   $("wishlist-empty").hidden = true;
   try {
     store.wishlist = await api("/api/wishlist");
+    store.loaded.wishlist = true;
     renderWishlist(true);
     renderBrowse();
     renderAccount();
   } catch (err) {
     list.replaceChildren();
-    if (err.status !== 401) fillEmpty($("wishlist-empty"), { title: "Couldn't load your wishlist", text: err.message, retry: loadWishlist });
+    if (err.status !== 401) {
+      store.loaded.wishlist = "failed";
+      fillEmpty($("wishlist-empty"), { title: "Couldn't load your wishlist", text: err.message, retry: loadWishlist });
+      renderAccount();
+    }
   } finally {
     list.removeAttribute("aria-busy");
   }

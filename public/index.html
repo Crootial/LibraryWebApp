@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="style.css" />
   <script src="platforms.js" defer></script>
   <script src="js/helpers.js" defer></script>
+  <script src="js/avatar.js" defer></script>
   <script src="js/game-view.js" defer></script>
   <script src="js/game-details.js" defer></script>
   <script src="js/forms.js" defer></script>
@@ -24,6 +25,7 @@
   <script src="js/games/wishlist.js" defer></script>
   <script src="js/games/browse.js" defer></script>
   <script src="js/games/account.js" defer></script>
+  <script src="js/games/profile.js" defer></script>
   <script src="js/games/forum.js" defer></script>
   <script src="js/games/detail-page.js" defer></script>
   <script src="js/games/page.js" defer></script>
@@ -39,7 +41,7 @@
         </div>
         <div class="masthead-side">
           <a class="account-link" id="account-link" href="#account" hidden>
-            <svg class="icon" aria-hidden="true"><use href="icons.svg#user" /></svg>
+            <span class="account-pic" id="account-pic"><svg class="icon" aria-hidden="true"><use href="icons.svg#user" /></svg></span>
             <span id="account-name">Sign in</span>
           </a>
           <p class="stat" id="stat" aria-live="polite" hidden>
@@ -263,8 +265,22 @@
           </div>
 
           <div id="account-member" hidden>
-            <p class="hint">Signed in as</p>
-            <h3 class="member-name" id="member-name"></h3>
+            <div class="profile-head">
+              <div id="profile-avatar" class="profile-avatar"></div>
+              <div class="profile-id">
+                <p class="hint">Signed in as</p>
+                <h3 class="member-name" id="member-name"></h3>
+                <p class="profile-note" id="profile-note" aria-live="polite"></p>
+                <div class="profile-actions">
+                  <input id="avatar-file" type="file" accept="image/*" aria-label="Choose a profile picture" hidden />
+                  <button class="btn btn-primary btn-sm" type="button" id="avatar-pick">Upload picture</button>
+                  <button class="btn btn-primary btn-sm" type="button" id="avatar-save" hidden>Save picture</button>
+                  <button class="btn btn-ghost btn-sm" type="button" id="avatar-cancel" hidden>Cancel</button>
+                  <button class="btn btn-ghost btn-sm" type="button" id="avatar-remove" hidden>Remove picture</button>
+                </div>
+                <p class="profile-help">JPG, PNG, WebP or GIF. The middle square of the picture is used.</p>
+              </div>
+            </div>
             <dl class="member-stats">
               <div class="member-stat">
                 <dt>In your collection</dt>
@@ -279,6 +295,25 @@
                 <dd id="member-since" class="member-date">-</dd>
               </div>
             </dl>
+
+            <section class="shelf-section" aria-labelledby="profile-collection-heading">
+              <div class="shelf-head">
+                <h3 id="profile-collection-heading">Collection <span class="chip shelf-count" id="profile-collection-count" hidden>0</span></h3>
+                <a class="btn btn-ghost btn-sm" id="profile-collection-all" href="#collection" hidden>View all</a>
+              </div>
+              <ul class="shelf" id="profile-collection" aria-busy="true"></ul>
+              <p class="shelf-note" id="profile-collection-note" hidden></p>
+            </section>
+
+            <section class="shelf-section" aria-labelledby="profile-wishlist-heading">
+              <div class="shelf-head">
+                <h3 id="profile-wishlist-heading">Wishlist <span class="chip shelf-count" id="profile-wishlist-count" hidden>0</span></h3>
+                <a class="btn btn-ghost btn-sm" id="profile-wishlist-all" href="#wishlist" hidden>View all</a>
+              </div>
+              <ul class="shelf" id="profile-wishlist" aria-busy="true"></ul>
+              <p class="shelf-note" id="profile-wishlist-note" hidden></p>
+            </section>
+
             <div class="form-actions">
               <button class="btn btn-danger" type="button" id="signout">Sign out</button>
             </div>

@@ -309,6 +309,7 @@ function renderGameDetailView() {
     wishlist: "Wishlist",
     lookup: "Look up online",
     add: "Add a game",
+    account: "Profile",
   };
   const prevTabLabel = tabLabelMap[previousTabName] || "Games";
 

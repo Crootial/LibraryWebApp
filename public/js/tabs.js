@@ -22,6 +22,8 @@ function initTabs() {
 
   function show(name) {
     if (shown !== "account" && shown !== "game" && name !== shown) before = shown;
+    // A game opened from the profile's shelves goes back to the profile, not to the tab before it
+    else if (shown === "account" && name === "game") before = "account";
     shown = name;
     for (const panel of panels) panel.hidden = panel.id !== "panel-" + name;
     for (const tab of tabs) {

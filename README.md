@@ -6,14 +6,14 @@ A video game database web app. Search the [RAWG](https://rawg.io) game database,
 git clone https://github.com/Crootial/LibraryWebApp.git
 
 
-Everything under `/api/games` and `/api/wishlist` needs a signed-in account, and only ever touches that account's own games. `/api/trending`, `/api/lookup` and `/api/auth/*` are open to everyone. Anyone can read the forum under `/api/forum`; posting, voting and deleting need a real account (a guest gets a 403).
+Everything under `/api/games` and `/api/wishlist` needs a signed-in account, and only ever touches that account's own games. `/api/trending`, `/api/lookup` and `/api/auth/*` are open to everyone. Anyone can read the forum under `/api/forum` and see a profile picture; posting, voting, deleting and changing your own picture need a real account (a guest gets a 403).
 
 | Method | Path | What it does |
 | --- | --- | --- |
 | POST | `/api/auth/register` | Create an account from `{ "username", "password" }` and sign in to it. Usernames are 3 to 24 letters, numbers, dots, dashes or underscores. Passwords are 8 to 128 characters |
 | POST | `/api/auth/login` | Sign in with `{ "username", "password" }`. After 8 wrong passwords within ten minutes, that username has to wait from that address until the ten minutes are up |
 | POST | `/api/auth/logout` | Sign out |
-| GET | `/api/auth/me` | `{ "user": { id, username, createdAt } }` for the signed-in account, or `{ "user": null }` |
+| GET | `/api/auth/me` | `{ "user": { id, username, createdAt, avatarAt } }` for the signed-in account, or `{ "user": null }` |
 | GET | `/api/games` | List the account's saved games |
 | POST | `/api/games` | Add a game (JSON body). If it was on the wishlist it leaves the wishlist |
 | PUT | `/api/games/:id` | Update a saved game with the fields in the JSON body |
@@ -25,20 +25,25 @@ Everything under `/api/games` and `/api/wishlist` needs a signed-in account, and
 | GET | `/api/trending` | The 12 games released in the last 120 days that the most RAWG users have added to their libraries. Cached for an hour |
 | GET | `/api/lookup?title=...` | Search RAWG and return up to 5 matches |
 | GET | `/api/lookup/:id` | RAWG details for one game: developers, publishers, website, age rating, Metacritic score and average playtime. `:id` is a RAWG game id, which saved games keep as `rawg_id` |
-| GET | `/api/forum/:key/comments` | The comments on a game, newest first, with like and dislike totals and the viewer's own vote. `:key` is `rawg-<RAWG id>`, or `title-<lowercase title>` for a game that has no RAWG id |
+| GET | `/api/forum/:key/comments` | The comments on a game, newest first, with like and dislike totals, the viewer's own vote and each author's picture version (`avatarAt`). `:key` is `rawg-<RAWG id>`, or `title-<lowercase title>` for a game that has no RAWG id |
 | POST | `/api/forum/:key/comments` | Post a comment from `{ "body" }`, 1 to 1000 characters. Answers 429 after 5 comments in a minute |
 | POST | `/api/forum/comments/:id/vote` | Like, dislike or clear your vote from `{ "value" }`: `1` likes, `-1` dislikes, `0` clears it. Sending the same value twice changes nothing |
 | DELETE | `/api/forum/comments/:id` | Delete one of your own comments |
+| GET | `/api/profile/:username/avatar` | A profile picture, as a JPEG. 404 if that account has none. The page adds `?v=<avatarAt>` so a picture can be cached for good |
+| PUT | `/api/profile/avatar` | Set your profile picture. The body is the JPEG itself (`Content-Type: image/jpeg`), up to 512 KB and 1024 pixels on each side. The page crops to a square and shrinks to 256 pixels first. Answers with `{ user }` |
+| DELETE | `/api/profile/avatar` | Remove your profile picture. Answers with `{ user }` |
 
 
 server.js         Express server and the API routes
 auth.js           Accounts: password hashing, sign-in sessions and the /api/auth routes
-db.js             Reads and writes the JSON files
+profile.js        Profile pictures: the /api/profile routes
+db.js             Reads and writes the JSON files and the profile pictures
 library.json      The saved games
 wishlist.json     The wishlists (created when the server first starts)
 users.json        The accounts, with hashed passwords (created when the server first starts)
 sessions.json     The sign-ins that are still good (created when the server first starts)
 comments.json     The forum comments and who liked or disliked them (created when the server first starts)
+avatars/          The profile pictures, one JPEG per account (created when the first one is saved)
 package.json      Dependencies
 public/           The web page, served as it is
   index.html      The tabbed page: Home, My Games, Wishlist, Look up online, Add a game, and the Account panel
@@ -57,7 +62,8 @@ The data lives in plain JSON files next to `server.js`, in the same way as `libr
 - **Passwords** are hashed with scrypt, which comes with Node, and saved as `scrypt$N$r$p$salt$hash`. The password itself is never stored.
 - **Signing in** gives the browser a random token in an `HttpOnly`, `SameSite=Lax` cookie that lasts 30 days. `sessions.json` keeps only a fingerprint (SHA-256) of each token, so a copy of that file can't be used to sign in. Signing out removes the session. Set `COOKIE_SECURE=true` when the site is served over HTTPS behind a proxy.
 - **Games saved before accounts existed** have no owner. The first account that is ever created takes them over, so create your own account first.
-- `users.json`, `sessions.json`, `wishlist.json` and `comments.json` are listed in `.gitignore`. Don't commit them.
+- **Profile pictures** are saved as files in `avatars/`, named after the account id, not inside `users.json`. The server only takes a JPEG of up to 512 KB and 1024 pixels on each side, and checks the size in the file's header before keeping it. `users.json` holds `avatarAt`, the time the picture was set, which is also the version in the picture's address.
+- `users.json`, `sessions.json`, `wishlist.json`, `comments.json` and `avatars/` are listed in `.gitignore`. Don't commit them.
 
 Environment variables, all optional: `PORT` (default 3000), `DATA_DIR` (where the JSON files are kept, default the folder of `server.js`), `RAWG_API_KEY`, `TRENDING_DAYS` (how far back the trending list looks, default 120) and `COOKIE_SECURE`.
 

@@ -36,7 +36,10 @@ function icon(id) {
 async function api(path, options = {}) {
   const init = { method: options.method || "GET", signal: AbortSignal.timeout(20000) };
   const headers = { ...(options.headers || {}) };
-  if (options.body) {
+  if (options.body instanceof Blob) {
+    headers["Content-Type"] = options.body.type || "application/octet-stream";
+    init.body = options.body;
+  } else if (options.body) {
     headers["Content-Type"] = "application/json";
     init.body = JSON.stringify(options.body);
   }

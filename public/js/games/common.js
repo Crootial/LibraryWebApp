@@ -7,6 +7,8 @@ const store = {
   trending: null,
   filter: "",
   results: [],
+  // Whether the collection and wishlist have arrived: false, true, or "failed". The profile waits on them.
+  loaded: { games: false, wishlist: false },
   returnTo: null,
   back: () => "home",
 };

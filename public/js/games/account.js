@@ -11,15 +11,19 @@ function renderAccount() {
   $("member-games").textContent = store.games.length;
   $("member-wishes").textContent = store.wishlist.length;
   $("member-since").textContent = (user && formatDate(user.createdAt)) || "-";
+  renderProfile();
 }
 
 function applyUser() {
   const { user } = store;
   store.games = [];
   store.wishlist = [];
+  store.loaded = { games: false, wishlist: false };
 
   const isRealUser = user && !user.isGuest;
+  $("account-heading").textContent = isRealUser ? "Profile" : "Account";
   $("account-name").textContent = isRealUser ? user.username : (user ? "Guest" : "Sign in");
+  renderAccountLink();
   $("account-link").setAttribute("aria-label", user ? "Your account: " + user.username : "Sign in or create an account");
   $("account-link").hidden = false;
   $("stat").hidden = !user;

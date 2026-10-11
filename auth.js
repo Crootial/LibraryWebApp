@@ -148,8 +148,36 @@ function requireAuth(req, res, next) {
   next();
 }
 
+// avatarAt is when the profile picture was last set. It doubles as the version in the picture's URL.
 const publicUser = (user) =>
-  user ? { id: user.id, username: user.username, createdAt: user.createdAt, isGuest: Boolean(user.isGuest) } : null;
+  user
+    ? {
+        id: user.id,
+        username: user.username,
+        createdAt: user.createdAt,
+        isGuest: Boolean(user.isGuest),
+        avatarAt: user.avatarAt || null,
+      }
+    : null;
+
+// For things only a real account can do. A guest or a signed-out visitor gets a 403, not a 401,
+// so the page does not think a sign-in has ended.
+function requireMember(action = "do that") {
+  return (req, res, next) => {
+    try {
+      const user = currentUser(req);
+      if (!user || user.isGuest) {
+        return res.status(403).json({ error: "Sign in or create an account to " + action + "." });
+      }
+      req.user = user;
+      res.set("Cache-Control", "no-store");
+      next();
+    } catch (error) {
+      console.error("Session Error:", error);
+      res.status(500).json({ error: "Failed to check your sign-in" });
+    }
+  };
+}
 
 // Migrate unassigned or guest games to the registered account
 function adoptSavedGames(user) {
@@ -282,4 +310,4 @@ router.get("/me", (req, res) => {
   }
 });
 
-module.exports = { router, requireAuth, currentUser };
+module.exports = { router, requireAuth, requireMember, currentUser, publicUser };
