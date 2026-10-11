@@ -5,7 +5,8 @@ sessions.json
 wishlist.json
 comments.json
 friends.json
-
+.claude
+.env.example
 # Installed packages: run npm install after cloning
 node_modules/
 
