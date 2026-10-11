@@ -1,7 +1,3 @@
-// ---------- Platform picker ----------
-
-// Fill a form's platform tiles. Each tile is a checkbox underneath, so it works with the
-// keyboard and screen readers, and a game can sit on as many platforms as it needs.
 function buildPicker(form, selected = []) {
   const options = PLATFORMS.map((p) =>
     el("label", { class: "platform-option", "data-brand": p.brand, title: p.name },
@@ -22,16 +18,11 @@ function checkPlatforms(form, ids) {
 const checkedPlatforms = (form) =>
   [...form.querySelectorAll("input[name=platform]:checked")].map((box) => box.value);
 
-// The systems on a game that have a tile in the picker. Names we don't recognise have none.
 const knownPlatformIds = (game) =>
   [...new Set(platformNames(game).map((name) => platformFor(name)).filter(Boolean).map((p) => p.id))];
 
-// ---------- Forms ----------
-
-// The same rule the server applies to a new account's username.
 const USERNAME = /^[A-Za-z0-9][A-Za-z0-9_.-]{2,23}$/;
 
-// Read a game form. Gives back { values } or { error, field }.
 function readForm(form) {
   const title = form.elements.title.value.trim();
   const rating = form.elements.rating.value.trim();
@@ -73,7 +64,6 @@ function showFormError(form, message, field) {
   }
 }
 
-// Clear the error as soon as the person starts typing again.
 function watchForm(form) {
   form.addEventListener("input", () => clearFormError(form));
 }

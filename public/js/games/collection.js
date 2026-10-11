@@ -1,6 +1,3 @@
-// The Collection tab: the person's saved games, deleting them, and adding one by hand.
-
-// Details fetched for a saved game are saved with it, so they show at once next time.
 async function keepDetails(game, extra) {
   const fresh = {};
   for (const [key, value] of Object.entries(extra)) {
@@ -9,12 +6,10 @@ async function keepDetails(game, extra) {
   Object.assign(game, fresh);
   try {
     await api("/api/games/" + encodeURIComponent(game.id), { method: "PUT", body: fresh });
-  } catch {
-    // Not saved this time. The card fetches them again the next time it is opened.
-  }
+  } catch {}
 }
 
-// Delete asks twice: the first click arms the button, the second one confirms.
+// Two-step confirmation for destructive delete
 function armedDelete(game, title) {
   const button = el("button", {
     class: "btn btn-danger btn-sm",
@@ -61,7 +56,6 @@ function gameCard(game) {
   );
 }
 
-// The collection, newest first, narrowed down by whatever is typed in the filter box.
 function visibleGames() {
   const q = store.filter.trim().toLowerCase();
   return [...store.games]
@@ -77,7 +71,6 @@ function visibleGames() {
     ].join(" ").toLowerCase().includes(q));
 }
 
-// What to say when there are no cards to show.
 function fillCollectionEmpty(empty) {
   if (!store.user) {
     fillEmpty(empty, { title: "Sign in to see your games", text: "Your collection is saved to your account.", links: SIGN_IN_LINKS });
@@ -92,7 +85,6 @@ function fillCollectionEmpty(empty) {
   }
 }
 
-// Draw the collection. Pass true to slam the cards in one after another.
 function renderCollection(enter = false) {
   const shown = visibleGames();
   const count = store.games.length;
@@ -138,8 +130,6 @@ async function removeGame(game, button) {
   }
 }
 
-// Put a game in the collection and make just that card slam in. A game that was on the wishlist
-// is gone from it now, which the server has done as well.
 function collect(game, message = "Added “" + (game.title || "Untitled game") + "” to your collection.") {
   store.games = [...store.games.filter((g) => g.id !== game.id), game];
   store.wishlist = store.wishlist.filter((item) => !sameGame(item, game));
@@ -149,7 +139,6 @@ function collect(game, message = "Added “" + (game.title || "Untitled game") +
   toast(message);
 }
 
-// The "Add a game" form.
 function initAddForm() {
   const addForm = $("add-form");
   buildPicker(addForm);
@@ -171,7 +160,6 @@ function initAddForm() {
     setBusy(button, true, "Adding");
     try {
       collect(await api("/api/games", { method: "POST", body }));
-      // Keep the platforms: people usually add several games for the same system in a row.
       addForm.reset();
       checkPlatforms(addForm, platformIds);
       addForm.elements.title.focus();
@@ -183,7 +171,6 @@ function initAddForm() {
   });
 }
 
-// The filter box above the collection.
 function initFilter() {
   $("filter").addEventListener("input", (e) => {
     store.filter = e.target.value;

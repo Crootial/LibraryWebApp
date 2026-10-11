@@ -1,5 +1,3 @@
-// The Wishlist tab: games saved for later, moving them into the collection, and the heart.
-
 function wishCard(item) {
   const title = item.title || "Untitled game";
   const moveButton = el("button", {
@@ -60,7 +58,6 @@ async function loadWishlist() {
   }
 }
 
-// The heart on a result or a trending game: on the wishlist, or off it.
 async function toggleWish(result, button) {
   if (!store.user) return askToSignIn("Sign in to keep a wishlist.");
   const existing = wishOf(result);
@@ -82,7 +79,6 @@ async function toggleWish(result, button) {
   }
 }
 
-// Got the game: it leaves the wishlist and joins the collection.
 async function moveWish(item, button) {
   setBusy(button, true, "Moving");
   try {

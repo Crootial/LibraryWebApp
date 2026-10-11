@@ -12,20 +12,15 @@ app.use(express.static("public"));
 
 const RAWG_API_KEY = process.env.RAWG_API_KEY || "d75605f6b2254c428360a0a491247add";
 
-// ACCOUNTS - Register, sign in, sign out and "who am I" live in auth.js.
-// Every route below that reads or writes a person's games asks for a signed-in account first
-// and only ever touches the entries marked with that account's id.
 app.use("/api/auth", auth.router);
 
-// The entries (games or wishlist) that belong to the signed-in person
 const mine = (req) => (item) => item.userId === req.user.id;
 
-// Two entries are the same game when they share a RAWG id or a title.
+// Games match by RAWG ID or normalized title
 const titleKey = (game) => String(game.title ?? "").trim().toLowerCase();
 const sameGame = (a, b) =>
   Boolean((a.rawg_id && a.rawg_id === b.rawg_id) || (titleKey(a) && titleKey(a) === titleKey(b)));
 
-// READ - Get the signed-in person's saved games from the database
 app.get("/api/games", auth.requireAuth, (req, res) => {
   try {
     const games = db.read().filter(mine(req));
@@ -35,11 +30,9 @@ app.get("/api/games", auth.requireAuth, (req, res) => {
   }
 });
 
-// CREATE - Add a game to the signed-in person's collection
 app.post("/api/games", auth.requireAuth, (req, res) => {
   try {
     const games = db.read();
-    // The id and the owner are set here. The request can't choose them.
     const { id, userId, ...fields } = req.body ?? {};
     const game = { id: db.newId(games), ...fields, userId: req.user.id };
     games.push(game);
@@ -51,8 +44,7 @@ app.post("/api/games", auth.requireAuth, (req, res) => {
   }
 });
 
-// A game that has been collected is no longer wanted. The game is already saved by now, so a
-// problem with the wishlist file is only logged.
+// Remove game from wishlist once added to collection
 function leaveWishlist(req, game) {
   try {
     const wishlist = db.wishlist.read();
@@ -63,11 +55,9 @@ function leaveWishlist(req, game) {
   }
 }
 
-// UPDATE - Edit a game by ID
 app.put("/api/games/:id", auth.requireAuth, (req, res) => {
   try {
     const games = db.read();
-    // Convert both IDs to String for a safe match
     const game = games.find((g) => mine(req)(g) && String(g.id) === String(req.params.id));
 
     if (!game) {
@@ -83,25 +73,17 @@ app.put("/api/games/:id", auth.requireAuth, (req, res) => {
   }
 });
 
-// DELETE - Remove a game by ID from library.json
 app.delete("/api/games/:id", auth.requireAuth, (req, res) => {
   try {
     const games = db.read();
-
-    // Convert parameter ID to a string for a safe comparison
     const targetId = String(req.params.id);
-
-    // Filter out the item matching the target ID, if it is one of this person's
     const updatedGames = games.filter((g) => !(mine(req)(g) && String(g.id) === targetId));
 
-    // If array lengths are equal, nothing was removed
     if (games.length === updatedGames.length) {
       return res.status(404).json({ error: "Game not found" });
     }
 
-    // Save the updated list back to library.json
     db.write(updatedGames);
-
     res.json({ message: "Game deleted successfully" });
   } catch (error) {
     console.error("Delete Error:", error);
@@ -109,14 +91,11 @@ app.delete("/api/games/:id", auth.requireAuth, (req, res) => {
   }
 });
 
-// WISHLIST - Games the signed-in person wants but doesn't own yet. An entry has the same
-// fields as a search result, and only these are kept.
 const WISH_FIELDS = [
   "rawg_id", "title", "released", "rating", "image", "platforms", "genres",
   "developers", "publishers", "website", "esrb", "metacritic", "playtime",
 ];
 
-// READ - Get the wishlist
 app.get("/api/wishlist", auth.requireAuth, (req, res) => {
   try {
     res.json(db.wishlist.read().filter(mine(req)));
@@ -156,7 +135,6 @@ app.post("/api/wishlist", auth.requireAuth, (req, res) => {
   }
 });
 
-// DELETE - Take a game off the wishlist
 app.delete("/api/wishlist/:id", auth.requireAuth, (req, res) => {
   try {
     const wishlist = db.wishlist.read();
@@ -175,8 +153,6 @@ app.delete("/api/wishlist/:id", auth.requireAuth, (req, res) => {
   }
 });
 
-// UPDATE - Move a wishlist entry into the collection: the person has got the game.
-// The answer is the game as it now sits in the collection.
 app.post("/api/wishlist/:id/collect", auth.requireAuth, (req, res) => {
   try {
     const wishlist = db.wishlist.read();
@@ -186,7 +162,6 @@ app.post("/api/wishlist/:id/collect", auth.requireAuth, (req, res) => {
       return res.status(404).json({ error: "Wishlist entry not found" });
     }
 
-    // A game that is already owned just leaves the wishlist
     const games = db.read();
     let game = games.find((g) => mine(req)(g) && sameGame(g, item));
     const status = game ? 200 : 201;
@@ -205,7 +180,6 @@ app.post("/api/wishlist/:id/collect", auth.requireAuth, (req, res) => {
   }
 });
 
-// What a RAWG game looks like to the page. A search result and a trending game share it.
 const summarize = (game) => ({
   rawg_id: game.id,
   title: game.name,
@@ -218,7 +192,6 @@ const summarize = (game) => ({
   genres: game.genres ? game.genres.map((g) => g.name) : [],
 });
 
-// INTEGRATION - Look up games from RAWG API
 app.get("/api/lookup", async (req, res) => {
   try {
     const { title } = req.query;
@@ -244,9 +217,7 @@ app.get("/api/lookup", async (req, res) => {
   }
 });
 
-// INTEGRATION - What is trending: of the games released lately, the ones that the most RAWG
-// users have added to their libraries. Everyone sees the same list, so RAWG is asked at most
-// once an hour however many people open the home page.
+// Trending games cache (1 hour TTL)
 const TRENDING_DAYS = Number(process.env.TRENDING_DAYS) || 120;
 const TRENDING_SIZE = 12;
 const TRENDING_TTL = 60 * 60 * 1000;
@@ -256,7 +227,7 @@ let refreshing = null;
 const isoDate = (date) => date.toISOString().slice(0, 10);
 
 function refreshTrending() {
-  // Several people arriving at once share one request to RAWG
+  // Coalesce concurrent requests into a single in-flight RAWG request
   if (!refreshing) {
     const today = new Date();
     const since = new Date(today.getTime() - TRENDING_DAYS * 24 * 60 * 60 * 1000);
@@ -287,7 +258,7 @@ app.get("/api/trending", async (req, res) => {
     res.json(trending.games);
   } catch (error) {
     console.error("RAWG Trending Error:", error.response?.data || error.message);
-    // RAWG can't be reached. An old list is better than none, and the next try comes in a minute.
+    // Fall back to stale cache on RAWG failure, retry after 1 minute
     if (trending.games.length) {
       trending.at = Date.now() - TRENDING_TTL + 60 * 1000;
       return res.json(trending.games);
@@ -296,13 +267,9 @@ app.get("/api/trending", async (req, res) => {
   }
 });
 
-// INTEGRATION - Get the details of one RAWG game: developers, publishers, age rating and more.
-// The search results above don't carry these, only RAWG's page for a single game does.
-// Example request: GET http://localhost:3000/api/lookup/41494
 app.get("/api/lookup/:id", async (req, res) => {
   const { id } = req.params;
 
-  // RAWG ids are whole numbers. RAWG also accepts names in this spot, so only numbers go through.
   if (!/^\d+$/.test(id)) {
     return res.status(400).json({ error: "Game id must be a number" });
   }

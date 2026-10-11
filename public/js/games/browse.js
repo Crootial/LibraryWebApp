@@ -1,6 +1,3 @@
-// Lookup results and the trending list: games that are not yet the person's own.
-
-// The buttons under a search result or a trending game: keep it, or save it for later.
 function saveActions(result) {
   const have = owned(result);
   const wished = Boolean(wishOf(result));
@@ -14,7 +11,6 @@ function saveActions(result) {
   keep.disabled = have;
   if (!have) keep.addEventListener("click", () => addResult(result, keep));
 
-  // A game that is already owned has no use for the heart.
   let heart = null;
   if (!have) {
     heart = el("button", {
@@ -31,7 +27,6 @@ function saveActions(result) {
   return el("div", { class: "save-actions" }, keep, heart);
 }
 
-// One search result: its art, what it is, the systems it is on, and the buttons to keep it.
 function resultRow(result) {
   const rating = ratingOf(result);
   const facts = [yearOf(result), rating && rating.toFixed(1) + " / 5"].filter(Boolean).join(" · ");
@@ -43,7 +38,6 @@ function resultRow(result) {
       el("p", { class: "tags" }, ...platformTags(result).map(platformChip)),
       saveActions(result),
     ),
-    // Have a look at the developer and publisher before deciding to keep it.
     detailsPanel(result, {
       isOpen: openCards.results.has(result.rawg_id),
       onToggle: remember(openCards.results, result.rawg_id),
@@ -55,15 +49,13 @@ function renderResults() {
   $("results").replaceChildren(...store.results.map(resultRow));
 }
 
-// One game in the trending list: big art with its rank on the corner, then the same chips and
-// buttons a search result has.
 function trendCard(result, rank) {
   const body = cardBody(result, "trend-body");
   body.append(saveActions(result));
   return el("li", { class: "trend" },
     el("div", { class: "trend-art" },
       cover(result, "lg"),
-      el("span", { class: "rank", "aria-hidden": "true", text: "#" + rank }), // the list is numbered already
+      el("span", { class: "rank", "aria-hidden": "true", text: "#" + rank }),
     ),
     body,
     detailsPanel(result, {
@@ -74,12 +66,10 @@ function trendCard(result, rank) {
 }
 
 function renderTrending(enter = false) {
-  if (!store.trending) return; // still loading: leave the placeholders alone
+  if (!store.trending) return;
   drawCards($("trending"), store.trending.map((game, i) => trendCard(game, i + 1)), enter);
 }
 
-// Search results and trending games both show whether a game is owned or wished for. When that
-// changes only their buttons are redrawn, so a click doesn't make the rest of the cards blink.
 function refreshButtons(container, items) {
   [...container.children].forEach((card, i) => {
     const old = card.querySelector(".save-actions");
@@ -110,8 +100,6 @@ async function loadTrending() {
   }
 }
 
-// The backend keeps whatever it is sent, so a search result is saved exactly as it came back.
-// If its details were already opened they go along with it.
 async function addResult(result, button) {
   if (!store.user) return askToSignIn("Sign in to add games to your collection.");
   const restoreFocus = holdFocus(button);
@@ -124,7 +112,6 @@ async function addResult(result, button) {
   }
 }
 
-// The "Look up online" form.
 function initLookupForm() {
   const lookupForm = $("lookup-form");
   const status = $("lookup-status");

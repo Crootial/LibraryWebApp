@@ -1,8 +1,4 @@
-// The systems a game can be filed under, and how to recognise them from the names RAWG uses.
-//   name  - shown in the picker, and saved on a game when its tile is ticked
-//   abbr  - short label on tiles and chips
-//   brand - picks the tile colour (see style.css)
-//   match - the names it recognises, such as "PlayStation 5", "Xbox Series S/X" or a typed "PS5"
+// Platform metadata and regex patterns for RAWG name resolution
 const PLATFORMS = [
   { id: "pc", name: "PC", abbr: "PC", brand: "pc", match: /^(?:pc|web|linux|macos|classic macintosh)$|windows(?! phone)|\bdos\b|steam/i },
   { id: "playstation", name: "PlayStation", abbr: "PS", brand: "sony", match: /playstation|^ps ?[1-5]$|^psp$|^ps vita$/i },
@@ -23,7 +19,6 @@ const PLATFORMS = [
 
 const platformById = (id) => PLATFORMS.find((p) => p.id === id);
 
-// The platform a name belongs to, or null when we don't know it.
 function platformFor(name) {
   const text = String(name ?? "").trim();
   return PLATFORMS.find((p) => p.match && p.match.test(text)) || null;

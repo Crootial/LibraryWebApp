@@ -1,11 +1,8 @@
-// Small helpers every page uses: building elements, calling the API, toasts and busy buttons.
-
 const $ = (id) => document.getElementById(id);
 const SVG_NS = "http://www.w3.org/2000/svg";
 const MAX_YEAR = new Date().getFullYear() + 1;
 
-// Build an element from text and child elements, never from HTML strings,
-// so a game title can't inject markup into the page.
+// DOM element builder with XSS protection via textContent/attributes
 function el(tag, props = {}, ...children) {
   const node = document.createElement(tag);
   for (const [key, value] of Object.entries(props)) {
@@ -19,7 +16,6 @@ function el(tag, props = {}, ...children) {
   return node;
 }
 
-// An icon from the sprite in icons.svg. It takes its colour from the surrounding text.
 function icon(id) {
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("class", "icon");
@@ -31,7 +27,6 @@ function icon(id) {
   return svg;
 }
 
-// Call the API and hand back the JSON. Failures become an Error with a readable message.
 async function api(path, options = {}) {
   const init = { method: options.method || "GET", signal: AbortSignal.timeout(20000) };
   if (options.body) {
@@ -48,7 +43,6 @@ async function api(path, options = {}) {
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    // A sign-in can run out while the page is open. Say so, so the page can ask for a new one.
     if (res.status === 401 && !path.startsWith("/api/auth/")) window.dispatchEvent(new Event("session-ended"));
     const error = new Error(data.error || "Something went wrong (" + res.status + ").");
     error.status = res.status;
@@ -66,7 +60,6 @@ function toast(message, type = "ok") {
   }, type === "error" ? 5500 : 3200);
 }
 
-// A message that survives a page change, for "Saved" after leaving the edit page.
 function setFlash(message) {
   try { sessionStorage.setItem("flash", message); } catch {}
 }
@@ -81,8 +74,6 @@ function takeFlash() {
   }
 }
 
-// Swap a button's contents for a label and spinner while a request is running,
-// then put back whatever was inside.
 const idleContents = new WeakMap();
 function setBusy(button, busy, busyLabel) {
   if (busy) {

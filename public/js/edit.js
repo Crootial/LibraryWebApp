@@ -1,8 +1,4 @@
-// The edit page.
-
-// A game's platform names after its tiles were changed. Names for systems that are still ticked
-// stay as they were ("PlayStation 5" stays "PlayStation 5"), unticked ones go, names we don't
-// recognise are left alone, and newly ticked systems get their tile's name.
+// Reconcile edited platform IDs while preserving unmapped platform names
 function platformsAfterEdit(game, ids) {
   const names = platformNames(game);
   const keep = names.filter((name) => {
@@ -60,16 +56,12 @@ function initEdit() {
     if (check.error) return showFormError(form, check.error, check.field);
     const { title, platformIds, rating, year, developers, publishers } = check.values;
 
-    // Send only what changed. The backend merges it into the saved game, so the RAWG id, the
-    // picture, the genres and the full release date are never lost by editing the title.
     const changes = { title };
     const before = knownPlatformIds(original);
     const sameSystems = before.length === platformIds.length && platformIds.every((pid) => before.includes(pid));
     if (!sameSystems) changes.platforms = platformsAfterEdit(original, platformIds);
     if (rating !== ratingOf(original)) changes.rating = rating;
     if (year !== yearOf(original)) changes.released = year == null ? null : String(year);
-    // An empty box for a game that never had a developer is not a change, and leaving it out lets
-    // the Details dropdown still fetch the real one from RAWG.
     const sameNames = (a, b) => a.length === b.length && a.every((name, i) => name === b[i]);
     if (!sameNames(developers, listOf(original.developers))) changes.developers = developers;
     if (!sameNames(publishers, listOf(original.publishers))) changes.publishers = publishers;

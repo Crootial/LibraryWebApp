@@ -1,40 +1,26 @@
-// The Details dropdown on a card: fetching the extra RAWG facts and drawing them.
-
-// ---------- Game details (the dropdown on a card) ----------
-
-// RAWG's search results leave out the developer, the publisher and more. The backend serves those
-// from RAWG's page for a single game, so a card fetches them the first time it is opened. The
-// request is remembered, so opening the same game twice, or in two places, asks RAWG only once.
+// Cache game details requests by RAWG ID to deduplicate API calls
 const detailsCache = new Map();
 
-// The parts of RAWG's page that the dropdown shows and a game keeps. A key the server leaves out is
-// filled with null, so a game that has been looked up always holds all of them. Anything else a
-// server sends, such as a description, is ignored rather than saved.
 const DETAIL_KEYS = ["developers", "publishers", "website", "esrb", "metacritic", "playtime"];
 const pickDetails = (extra) => Object.fromEntries(DETAIL_KEYS.map((key) => [key, extra?.[key] ?? null]));
 
 function fetchDetails(rawgId) {
   if (!detailsCache.has(rawgId)) {
     const request = api("/api/lookup/" + encodeURIComponent(rawgId)).then(pickDetails);
-    request.catch(() => detailsCache.delete(rawgId)); // a failed request can be tried again
+    request.catch(() => detailsCache.delete(rawgId));
     detailsCache.set(rawgId, request);
   }
   return detailsCache.get(rawgId);
 }
 
-// Developers and publishers are saved as lists of names. A box typed by hand may hold "A, B".
 const listOf = (value) =>
   (Array.isArray(value) ? value : String(value ?? "").split(","))
     .map((name) => String(name ?? "").trim())
     .filter(Boolean);
 
-// A saved game has had its RAWG details fetched once it holds the age rating. The server always
-// sends that, as null for a game nobody has rated, so it shows a lookup happened even when RAWG
-// had little to add.
+// Presence of esrb indicates whether full details were previously fetched
 const detailsFetched = (game) => game.esrb !== undefined;
 
-// Fill in only what the game doesn't have yet. Its own values win, since someone may have typed
-// a developer in by hand.
 function withDetails(game, extra) {
   const merged = { ...game };
   for (const [key, value] of Object.entries(extra || {})) {
@@ -46,7 +32,6 @@ function withDetails(game, extra) {
 const distinct = (names) =>
   names.filter((name, i) => names.findIndex((n) => n.toLowerCase() === name.toLowerCase()) === i);
 
-// "2020-12-10" becomes "December 10, 2020". A bare year stays a year.
 function formatDate(released) {
   const text = String(released ?? "").trim();
   const full = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);
@@ -74,7 +59,6 @@ function detailItem(label, content, wide = false) {
   );
 }
 
-// A platform with its full name, as RAWG spells it, rather than the short label on a card.
 function fullPlatformChip(name) {
   const platform = platformFor(name) || platformById("other");
   return el("span", { class: "chip chip-platform chip-full", title: name },
@@ -83,14 +67,6 @@ function fullPlatformChip(name) {
   );
 }
 
-// The rows of a game's details, worded like the plain first version of the page: Release Date,
-// Genres and Platforms, with "N/A" for a game that has none. Those come from the saved game
-// itself, so they show on any machine, even one that can't reach RAWG.
-//
-// The rows come in three groups, so the second always sits on a row of its own:
-//   1. release date, genres and the ratings (age rating, Metacritic, rating, playtime)
-//   2. developer and publisher, under the ratings. They appear once they are known (`credits`)
-//   3. platforms and website
 function detailList(info, { credits = true } = {}) {
   const developers = listOf(info.developers);
   const publishers = listOf(info.publishers);
@@ -139,13 +115,10 @@ function detailsPanel(game, { isOpen = false, onToggle, onLoaded } = {}) {
     body,
   );
 
-  // A server that wasn't restarted after an update has no details route, and answers 404 with a
-  // plain page rather than a message.
   const reasonFor = (err) =>
     /\(404\)/.test(err.message) ? "This server may need updating. Restart it with the latest code." : err.message;
 
   async function fill() {
-    // Games added by hand have no RAWG page, and saved ones may already hold their details.
     if (!game.rawg_id || detailsFetched(game)) {
       body.replaceChildren(detailList(game));
       if (!game.rawg_id && !listOf(game.developers).length && !listOf(game.publishers).length) {
@@ -154,9 +127,6 @@ function detailsPanel(game, { isOpen = false, onToggle, onLoaded } = {}) {
       return;
     }
 
-    // Developer, publisher and the other extras need a trip to RAWG. What the saved game already
-    // holds shows straight away, so the dropdown is never empty, and the extras join in when they
-    // arrive. If they never do, everything else stays on show.
     const credits = game.developers !== undefined || game.publishers !== undefined;
     const basics = () => detailList(game, { credits });
     body.replaceChildren(

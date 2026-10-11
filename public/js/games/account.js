@@ -1,6 +1,3 @@
-// The Account tab: signing in, creating an account, signing out, and what changes with who is here.
-
-// The Account tab shows one of its two forms. Links that lead there say which one they want.
 function showMode(mode) {
   for (const name of ["signin", "signup"]) {
     $(name + "-form").hidden = name !== mode;
@@ -16,9 +13,6 @@ function renderAccount() {
   $("member-since").textContent = (user && formatDate(user.createdAt)) || "-";
 }
 
-// Everything that depends on who is signed in: the button in the masthead, which forms and
-// lists are on show, and the person's own collection and wishlist, which are fetched
-// afresh. A visitor gets signed-out versions of them.
 function applyUser() {
   const { user } = store;
   store.games = [];
@@ -38,8 +32,6 @@ function applyUser() {
   if (user) $("add-empty").hidden = true;
   else fillEmpty($("add-empty"), { title: "Sign in to add games", text: "Games you add are saved to your account.", links: SIGN_IN_LINKS });
 
-  // Drawn first for both kinds of visitor. For a signed-in person the loading placeholders
-  // replace it straight away, before the browser paints.
   renderAll();
   if (user) {
     loadGames();
@@ -50,7 +42,6 @@ function applyUser() {
   }
 }
 
-// Sign in or create an account, then go back to the tab the person came from.
 async function signInWith(form, path, body, busyLabel, welcome) {
   const button = form.querySelector("button[type=submit]");
   setBusy(button, true, busyLabel);
@@ -125,8 +116,6 @@ function initAccount() {
   initSignUpForm();
   initSignOut();
 
-  // A sign-in can run out while the page is open (api() says so on a 401). The page then falls
-  // back to its signed-out self.
   window.addEventListener("session-ended", () => {
     if (!store.user) return;
     store.user = null;
