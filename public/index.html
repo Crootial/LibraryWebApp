@@ -26,6 +26,8 @@
   <script src="js/games/browse.js" defer></script>
   <script src="js/games/account.js" defer></script>
   <script src="js/games/profile.js" defer></script>
+  <script src="js/games/friends.js" defer></script>
+  <script src="js/games/person.js" defer></script>
   <script src="js/games/forum.js" defer></script>
   <script src="js/games/detail-page.js" defer></script>
   <script src="js/games/page.js" defer></script>
@@ -42,7 +44,8 @@
         <div class="masthead-side">
           <a class="account-link" id="account-link" href="#account" hidden>
             <span class="account-pic" id="account-pic"><svg class="icon" aria-hidden="true"><use href="icons.svg#user" /></svg></span>
-            <span id="account-name">Sign in</span>
+            <span class="account-name" id="account-name">Sign in</span>
+            <span class="account-badge" id="account-badge" title="Friend requests waiting for you" hidden>0</span>
           </a>
           <p class="stat" id="stat" aria-live="polite" hidden>
             <strong id="count-num">0</strong>
@@ -90,7 +93,7 @@
           <p class="bar-note">Updated hourly from RAWG</p>
         </div>
         <div class="panel-body">
-          <p class="hint" id="home-hint">The games players have been adding to their libraries the most lately.</p>
+          <p class="hint" id="home-hint">Based on player counts and release date, like RAWG's own New and trending list. Games that aren't out yet are marked Coming.</p>
           <ol id="trending" class="trending" aria-busy="true">
             <li class="skeleton"></li>
             <li class="skeleton"></li>
@@ -227,7 +230,7 @@
         </div>
         <div class="panel-body">
           <div id="account-guest" hidden>
-            <p class="hint">An account keeps your collection and wishlist private to you, and brings them back whenever you sign in.</p>
+            <p class="hint">An account keeps your collection and wishlist for you and the friends you accept, and brings them back whenever you sign in.</p>
             <div class="seg" role="group" aria-label="Sign in or create an account">
               <button class="btn" type="button" id="seg-signin" data-mode="signin" aria-pressed="true">Sign in</button>
               <button class="btn" type="button" id="seg-signup" data-mode="signup" aria-pressed="false">Create account</button>
@@ -291,10 +294,36 @@
                 <dd id="member-wishes">0</dd>
               </div>
               <div class="member-stat">
+                <dt>Friends</dt>
+                <dd id="member-friends">-</dd>
+              </div>
+              <div class="member-stat">
                 <dt>Member since</dt>
                 <dd id="member-since" class="member-date">-</dd>
               </div>
             </dl>
+
+            <section class="shelf-section" id="profile-requests-section" aria-labelledby="profile-requests-heading" hidden>
+              <div class="shelf-head">
+                <h3 id="profile-requests-heading">Friend requests <span class="chip shelf-count" id="profile-requests-count">0</span></h3>
+              </div>
+              <ul class="people" id="profile-requests"></ul>
+            </section>
+
+            <section class="shelf-section" aria-labelledby="profile-friends-heading">
+              <div class="shelf-head">
+                <h3 id="profile-friends-heading">Friends <span class="chip shelf-count" id="profile-friends-count" hidden>0</span></h3>
+              </div>
+              <ul class="people" id="profile-friends"></ul>
+              <p class="shelf-note" id="profile-friends-note" hidden></p>
+            </section>
+
+            <section class="shelf-section" id="profile-sent-section" aria-labelledby="profile-sent-heading" hidden>
+              <div class="shelf-head">
+                <h3 id="profile-sent-heading">Requests you sent</h3>
+              </div>
+              <ul class="people" id="profile-sent"></ul>
+            </section>
 
             <section class="shelf-section" aria-labelledby="profile-collection-heading">
               <div class="shelf-head">
@@ -317,6 +346,27 @@
             <div class="form-actions">
               <button class="btn btn-danger" type="button" id="signout">Sign out</button>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-user" role="tabpanel" aria-labelledby="user-heading" hidden>
+        <div class="panel-bar">
+          <h2 id="user-heading">Player profile</h2>
+          <button class="btn btn-ghost btn-sm" type="button" id="user-back">
+            <svg class="icon" aria-hidden="true"><use href="icons.svg#arrow-left" /></svg>
+            <span>Back</span>
+          </button>
+        </div>
+        <div class="panel-body">
+          <p id="user-status" class="status" role="status"></p>
+          <div id="user-view"></div>
+          <div id="user-empty" class="empty" hidden>
+            <svg class="icon empty-mark" aria-hidden="true"><use href="icons.svg#user" /></svg>
+            <h3></h3>
+            <p></p>
+            <button class="btn btn-primary" type="button" hidden>Try again</button>
+            <div class="empty-actions" hidden></div>
           </div>
         </div>
       </section>

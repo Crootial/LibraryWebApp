@@ -60,11 +60,6 @@ function forumLoad(key, thread) {
   return thread.inflight;
 }
 
-function forumSignIn(message) {
-  store.returnTo = location.hash;
-  askToSignIn(message);
-}
-
 function forumAgo(iso) {
   const then = Date.parse(iso);
   if (Number.isNaN(then)) return "";
@@ -114,7 +109,7 @@ async function forumVote(thread, comment, want) {
     Object.assign(comment, saved);
   } catch (err) {
     Object.assign(comment, before);
-    if (err.status === 403) forumSignIn(err.message);
+    if (err.status === 403) signInThenReturn(err.message);
     else if (err.status === 404) {
       thread.comments = thread.comments.filter((c) => c !== comment);
       toast(err.message, "error");
@@ -137,7 +132,7 @@ async function forumRemove(thread, comment, button) {
     button.dataset.armed = "false";
     button.textContent = "Delete";
     if (err.status === 404) thread.comments = thread.comments.filter((c) => c !== comment);
-    else if (err.status === 403) return forumSignIn(err.message);
+    else if (err.status === 403) return signInThenReturn(err.message);
     else showFailure(err);
   }
   forumNotify(thread);
@@ -189,7 +184,7 @@ function forumVoteButton(thread, comment, want, signedIn) {
     el("span", { class: "vote-count", text: String(count) }),
   );
   button.addEventListener("click", () => {
-    if (!signedIn) return forumSignIn("Sign in to like or dislike comments.");
+    if (!signedIn) return signInThenReturn("Sign in to like or dislike comments.");
     forumVote(thread, comment, want);
   });
   return button;
@@ -198,11 +193,21 @@ function forumVoteButton(thread, comment, want, signedIn) {
 function forumCommentItem(thread, comment, signedIn) {
   const name = comment.username || "Player";
   const when = forumAgo(comment.createdAt);
+  // Your own name opens your profile; anyone else's opens theirs, where you can add them as a friend
+  const profile = comment.mine ? "#account" : "#user:" + encodeURIComponent(name);
   return el("li", { class: "forum-comment" + (comment.mine ? " is-mine" : ""), "data-id": comment.id },
-    avatar(name, comment.avatarAt, "md"),
+    // The picture links to the same place, but the name is the link a keyboard or screen reader should use
+    el("a", { class: "forum-avatar-link", href: profile, tabindex: "-1", "aria-hidden": "true" },
+      avatar(name, comment.avatarAt, "md"),
+    ),
     el("div", { class: "forum-main" },
       el("div", { class: "forum-meta" },
-        el("strong", { class: "forum-author", text: name }),
+        el("a", {
+          class: "forum-author",
+          href: profile,
+          title: comment.mine ? "Your profile" : "View " + name + "'s profile",
+          text: name,
+        }),
         comment.mine ? el("span", { class: "forum-you", text: "You" }) : null,
         when ? el("time", {
           class: "forum-time",
@@ -301,7 +306,7 @@ function buildForumCard(game, title) {
         forumSort = "new";
         toast("Comment posted.");
       } catch (err) {
-        if (err.status === 403) forumSignIn(err.message);
+        if (err.status === 403) signInThenReturn(err.message);
         else showFailure(err);
       } finally {
         setBusy(post, false);
@@ -310,7 +315,7 @@ function buildForumCard(game, title) {
     });
   } else {
     const signIn = el("button", { class: "btn btn-primary btn-sm", type: "button", text: "Sign in" });
-    signIn.addEventListener("click", () => forumSignIn("Sign in to join the forum."));
+    signIn.addEventListener("click", () => signInThenReturn("Sign in to join the forum."));
     composer = el("div", { class: "forum-signin" },
       el("p", { text: "Sign in or create an account to post comments, like and dislike." }),
       signIn,
@@ -375,8 +380,3 @@ function buildForumCard(game, title) {
   if (!thread.loaded || Date.now() - thread.at > FORUM_FRESH_MS) forumLoad(key, thread);
   return root;
 }
-
-// Leaving the sign-in page for anywhere else drops the "take me back to the game" note.
-window.addEventListener("tab-shown", (e) => {
-  if (e.detail?.name !== "account") store.returnTo = null;
-});

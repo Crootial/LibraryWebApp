@@ -9,6 +9,7 @@ function initGames() {
   store.back = initTabs().back;
   initAccount();
   initProfile();
+  initPerson();
   initAddForm();
   initLookupForm();
   initFilter();

@@ -21,27 +21,32 @@ function formatDetailDate(dateStr) {
   return year ? String(year) : "N/A";
 }
 
-function openGameDetail(game) {
+// How a game is named in the address: #game:rawg-123, #game:id-5, or its title
+const hashIdFor = (game) =>
+  game.rawg_id ? "rawg-" + game.rawg_id : game.id ? "id-" + game.id : encodeURIComponent(game.title || "game");
+
+function showGame(game) {
   detailStore.currentGame = game;
   detailStore.fullDetails = null;
   detailStore.activeScreenshotIndex = 0;
   detailStore.isAboutExpanded = false;
   detailStore.lightboxOpen = false;
+}
 
-  const hashId = game.rawg_id
-    ? "rawg-" + game.rawg_id
-    : game.id
-      ? "id-" + game.id
-      : encodeURIComponent(game.title || "game");
-  location.hash = "game:" + hashId;
+function openGameDetail(game) {
+  showGame(game);
+  location.hash = "game:" + hashIdFor(game);
   renderGameDetailView();
 }
 window.openGameDetail = openGameDetail;
 
 async function loadGameDetails(rawgId, fallbackGame) {
+  // An answer for a game the player has already left would show the wrong game's details
+  const stale = () => detailStore.currentGame !== fallbackGame;
   if (rawgId) {
     try {
       const data = await api("/api/lookup/" + encodeURIComponent(rawgId));
+      if (stale()) return;
       detailStore.fullDetails = data;
       renderGameDetailView();
       return;
@@ -54,12 +59,14 @@ async function loadGameDetails(rawgId, fallbackGame) {
       const searchRes = await api("/api/lookup?title=" + encodeURIComponent(fallbackGame.title));
       if (searchRes.length && searchRes[0].rawg_id) {
         const data = await api("/api/lookup/" + encodeURIComponent(searchRes[0].rawg_id));
+        if (stale()) return;
         detailStore.fullDetails = data;
         renderGameDetailView();
         return;
       }
     } catch {}
   }
+  if (stale()) return;
   detailStore.fullDetails = fallbackGame;
   renderGameDetailView();
 }
@@ -225,7 +232,15 @@ function renderGameDetailView() {
   const container = $("game-detail-view");
   if (!container) return;
 
-  const game = detailStore.currentGame || findGameFromHash(location.hash);
+  // The address names the game. It can differ from the one in memory, after the browser's Back button or
+  // when coming back from a player's page, so go by the address.
+  let game = detailStore.currentGame;
+  const wanted = location.hash.slice(1).split(/[:?&]/)[1] || "";
+  if (!game || (wanted && wanted !== hashIdFor(game))) {
+    const named = findGameFromHash(location.hash);
+    if (named && named !== game) showGame(named);
+    game = detailStore.currentGame;
+  }
   if (!game) {
     container.innerHTML = `
       <div class="panel-bar">
@@ -311,7 +326,9 @@ function renderGameDetailView() {
     add: "Add a game",
     account: "Profile",
   };
-  const prevTabLabel = tabLabelMap[previousTabName] || "Games";
+  // A game opened from a player's page comes back to "user:<name>"
+  const prevTabLabel = tabLabelMap[previousTabName]
+    || (previousTabName.startsWith("user:") ? usernameIn(previousTabName) || "Player" : "Games");
 
   const statusWrap = el("div", { class: "detail-bar-status" },
     have ? el("span", { class: "chip chip-badge chip-owned", text: "In your collection" }) : null,

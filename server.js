@@ -4,6 +4,7 @@ const axios = require("axios");
 const db = require("./db");
 const auth = require("./auth");
 const profile = require("./profile");
+const friends = require("./friends");
 
 const app = express();
 
@@ -17,6 +18,7 @@ const RAWG_API_KEY = process.env.RAWG_API_KEY || "d75605f6b2254c428360a0a491247a
 
 app.use("/api/auth", auth.router);
 app.use("/api/profile", profile.router);
+app.use("/api/friends", friends.router);
 
 const mine = (req) => (item) => item.userId === req.user.id;
 
@@ -224,30 +226,61 @@ app.get("/api/lookup", async (req, res) => {
 // Trending games cache (1 hour TTL)
 const TRENDING_DAYS = Number(process.env.TRENDING_DAYS) || 120;
 const TRENDING_SIZE = 12;
+// Ask for more than we show, because duplicates and adult-only games are dropped from the list
+const TRENDING_FETCH = 30;
 const TRENDING_TTL = 60 * 60 * 1000;
 let trending = { at: 0, games: [] };
 let refreshing = null;
 
 const isoDate = (date) => date.toISOString().slice(0, 10);
 
+// Adult-only games stay off the home page. Mainstream mature games carry tags like "Nudity", so those
+// alone don't count (Grand Theft Auto VI has it).
+const ADULT_ONLY_TAGS = new Set(["hentai", "nsfw", "erotic", "eroge", "porn"]);
+const adultOnly = (game) =>
+  game.esrb_rating?.slug === "adults-only" || (game.tags ?? []).some((tag) => ADULT_ONLY_TAGS.has(tag.slug));
+
+function withoutRepeats(games) {
+  const seen = new Set();
+  return games.filter((game) => !seen.has(game.id) && seen.add(game.id));
+}
+
+async function fetchTrending() {
+  try {
+    // RAWG's own "New and trending" list, the one rawg.io puts first. It ranks by player counts and
+    // release date, so big games that are about to launch are in it too. It isn't in RAWG's public
+    // docs, so if it ever stops answering we fall back to the documented query below.
+    const response = await axios.get("https://api.rawg.io/api/games/lists/main", {
+      params: { key: RAWG_API_KEY, ordering: "-relevance", discover: true, page_size: TRENDING_FETCH },
+      timeout: 8000,
+    });
+    if (Array.isArray(response.data.results) && response.data.results.length) return response.data.results;
+    throw new Error("the list came back empty");
+  } catch (error) {
+    console.error("RAWG trending list failed, using the plain query instead:", error.response?.data || error.message);
+    const today = new Date();
+    const since = new Date(today.getTime() - TRENDING_DAYS * 24 * 60 * 60 * 1000);
+    const response = await axios.get("https://api.rawg.io/api/games", {
+      params: {
+        key: RAWG_API_KEY,
+        dates: isoDate(since) + "," + isoDate(today),
+        ordering: "-added",
+        exclude_additions: true,
+        page_size: TRENDING_FETCH,
+      },
+      timeout: 8000,
+    });
+    return response.data.results;
+  }
+}
+
 function refreshTrending() {
   // Coalesce concurrent requests into a single in-flight RAWG request
   if (!refreshing) {
-    const today = new Date();
-    const since = new Date(today.getTime() - TRENDING_DAYS * 24 * 60 * 60 * 1000);
-    refreshing = axios
-      .get("https://api.rawg.io/api/games", {
-        params: {
-          key: RAWG_API_KEY,
-          dates: isoDate(since) + "," + isoDate(today),
-          ordering: "-added",
-          exclude_additions: true,
-          page_size: TRENDING_SIZE,
-        },
-        timeout: 10000,
-      })
-      .then((response) => {
-        trending = { at: Date.now(), games: response.data.results.map(summarize) };
+    refreshing = fetchTrending()
+      .then((results) => {
+        const games = withoutRepeats(results).filter((game) => !adultOnly(game)).slice(0, TRENDING_SIZE);
+        trending = { at: Date.now(), games: games.map(summarize) };
       })
       .finally(() => {
         refreshing = null;

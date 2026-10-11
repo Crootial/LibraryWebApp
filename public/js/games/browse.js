@@ -67,8 +67,21 @@ function renderResults() {
   $("results").replaceChildren(...store.results.map(resultRow));
 }
 
+// "Coming Nov 19, 2026" for a game that isn't out yet, or null for one that is. RAWG gives Dec 31 to
+// games that only have a year announced, so those show the year alone.
+function comingLabel(game) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(game.released ?? ""));
+  if (!match) return null;
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  if (match[0] <= now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate())) return null;
+  return "Coming " + (match[2] + "-" + match[3] === "12-31" ? match[1] : formatDetailDate(match[0]));
+}
+
 function trendCard(result, rank) {
   const body = cardBody(result, "trend-body");
+  const coming = comingLabel(result);
+  if (coming) body.querySelector(".tags").prepend(el("span", { class: "chip chip-dark", title: "Not out yet", text: coming }));
   body.append(saveActions(result));
   return el("li", { class: "trend" },
     el("div", { class: "trend-art" },

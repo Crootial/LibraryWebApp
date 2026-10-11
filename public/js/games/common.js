@@ -1,4 +1,4 @@
-const HOME_HINT = "The games players have been adding to their libraries the most lately.";
+const HOME_HINT = "Based on player counts and release date, like RAWG's own New and trending list. Games that aren't out yet are marked Coming.";
 
 const store = {
   user: null,
@@ -7,8 +7,9 @@ const store = {
   trending: null,
   filter: "",
   results: [],
-  // Whether the collection and wishlist have arrived: false, true, or "failed". The profile waits on them.
-  loaded: { games: false, wishlist: false },
+  friends: { friends: [], incoming: [], outgoing: [] },
+  // Whether the collection, wishlist and friends have arrived: false, true, or "failed". The profile waits on them.
+  loaded: { games: false, wishlist: false, friends: false },
   returnTo: null,
   back: () => "home",
 };
@@ -57,6 +58,27 @@ function askToSignIn(message) {
   toast(message);
   location.hash = "account";
 }
+
+// The username in an address like #user:Name (or user:Name), or "" if there is none
+function usernameIn(hash) {
+  const raw = String(hash).replace(/^#/, "").split(":")[1] || "";
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return "";
+  }
+}
+
+// Send someone to sign in, and bring them back to this page once they have
+function signInThenReturn(message) {
+  store.returnTo = location.hash;
+  askToSignIn(message);
+}
+
+// Leaving the sign-in page for anywhere else drops the "take me back" note
+window.addEventListener("tab-shown", (e) => {
+  if (e.detail?.name !== "account") store.returnTo = null;
+});
 
 function showFailure(err) {
   if (err.status !== 401) toast(err.message, "error");

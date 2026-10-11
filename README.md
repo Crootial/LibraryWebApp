@@ -1,12 +1,12 @@
 # MyGameVault
 
-A video game database web app. Search the [RAWG](https://rawg.io) game database, save the games you care about to your own collection, keep a wishlist of the ones you want next, and look up their platforms, developers, publishers and ratings later. The home page lists the games that are trending on RAWG. Collections and wishlists belong to an account.
+A video game database web app. Search the [RAWG](https://rawg.io) game database, save the games you care about to your own collection, keep a wishlist of the ones you want next, and look up their platforms, developers, publishers and ratings later. The home page lists the games that are trending on RAWG, including big ones that are about to launch. Collections and wishlists belong to an account.
 
 
 git clone https://github.com/Crootial/LibraryWebApp.git
 
 
-Everything under `/api/games` and `/api/wishlist` needs a signed-in account, and only ever touches that account's own games. `/api/trending`, `/api/lookup` and `/api/auth/*` are open to everyone. Anyone can read the forum under `/api/forum` and see a profile picture; posting, voting, deleting and changing your own picture need a real account (a guest gets a 403).
+Everything under `/api/games` and `/api/wishlist` needs a signed-in account, and only ever touches that account's own games. `/api/trending`, `/api/lookup` and `/api/auth/*` are open to everyone. Anyone can read the forum under `/api/forum` and see a profile picture; posting, voting, deleting and changing your own picture need a real account (a guest gets a 403). So do `/api/friends` and looking at another player's profile.
 
 | Method | Path | What it does |
 | --- | --- | --- |
@@ -22,7 +22,7 @@ Everything under `/api/games` and `/api/wishlist` needs a signed-in account, and
 | POST | `/api/wishlist` | Put a game on the wishlist (JSON body shaped like a search result, `title` required). Answers 409 if the game is already on the wishlist or in the collection |
 | DELETE | `/api/wishlist/:id` | Take a game off the wishlist |
 | POST | `/api/wishlist/:id/collect` | Move a wishlist entry into the collection. Answers with the game as it now sits in the collection |
-| GET | `/api/trending` | The 12 games released in the last 120 days that the most RAWG users have added to their libraries. Cached for an hour |
+| GET | `/api/trending` | The 12 games on RAWG's own "New and trending" list, the one rawg.io shows first. It ranks by player counts and release date, so games that haven't launched yet can be in it (check `released`). Adult-only games (RAWG's Adults Only rating, or the hentai, nsfw, erotic, eroge and porn tags) are left out. That list isn't in RAWG's public docs, so if it stops answering the server falls back to the 12 games released in the last `TRENDING_DAYS` days that the most RAWG users have added. Cached for an hour |
 | GET | `/api/lookup?title=...` | Search RAWG and return up to 5 matches |
 | GET | `/api/lookup/:id` | RAWG details for one game: developers, publishers, website, age rating, Metacritic score and average playtime. `:id` is a RAWG game id, which saved games keep as `rawg_id` |
 | GET | `/api/forum/:key/comments` | The comments on a game, newest first, with like and dislike totals, the viewer's own vote and each author's picture version (`avatarAt`). `:key` is `rawg-<RAWG id>`, or `title-<lowercase title>` for a game that has no RAWG id |
@@ -32,17 +32,23 @@ Everything under `/api/games` and `/api/wishlist` needs a signed-in account, and
 | GET | `/api/profile/:username/avatar` | A profile picture, as a JPEG. 404 if that account has none. The page adds `?v=<avatarAt>` so a picture can be cached for good |
 | PUT | `/api/profile/avatar` | Set your profile picture. The body is the JPEG itself (`Content-Type: image/jpeg`), up to 512 KB and 1024 pixels on each side. The page crops to a square and shrinks to 256 pixels first. Answers with `{ user }` |
 | DELETE | `/api/profile/avatar` | Remove your profile picture. Answers with `{ user }` |
+| GET | `/api/profile/:username` | Another player's profile: `{ username, avatarAt, createdAt, relation, friendCount, collection, wishlist }`. `relation` is `self`, `friends`, `requested` (you asked them), `incoming` (they asked you) or `none`. `collection` and `wishlist` (`{ total, items }`, newest first, up to 200) are only filled in for friends and for the owner; everyone else gets `null` |
+| GET | `/api/friends` | `{ friends, incoming, outgoing }`: your friends, the requests waiting for your answer, and the ones you sent. Each entry is `{ username, avatarAt }` plus `since` or `sentAt` |
+| POST | `/api/friends/:username` | Add someone. This asks them, or accepts if they have already asked you. Answers `{ relation }`. Asking twice changes nothing. You can have 50 requests waiting at once |
+| DELETE | `/api/friends/:username` | Take back whatever is between you: cancel your request, decline theirs, or unfriend. Answers 404 if there was nothing |
 
 
 server.js         Express server and the API routes
 auth.js           Accounts: password hashing, sign-in sessions and the /api/auth routes
-profile.js        Profile pictures: the /api/profile routes
+profile.js        Profile pictures and other players' profiles: the /api/profile routes
+friends.js        Friends and friend requests: the /api/friends routes
 db.js             Reads and writes the JSON files and the profile pictures
 library.json      The saved games
 wishlist.json     The wishlists (created when the server first starts)
 users.json        The accounts, with hashed passwords (created when the server first starts)
 sessions.json     The sign-ins that are still good (created when the server first starts)
 comments.json     The forum comments and who liked or disliked them (created when the server first starts)
+friends.json      Who is friends with whom, and the requests waiting (created when the server first starts)
 avatars/          The profile pictures, one JPEG per account (created when the first one is saved)
 package.json      Dependencies
 public/           The web page, served as it is
@@ -63,9 +69,11 @@ The data lives in plain JSON files next to `server.js`, in the same way as `libr
 - **Signing in** gives the browser a random token in an `HttpOnly`, `SameSite=Lax` cookie that lasts 30 days. `sessions.json` keeps only a fingerprint (SHA-256) of each token, so a copy of that file can't be used to sign in. Signing out removes the session. Set `COOKIE_SECURE=true` when the site is served over HTTPS behind a proxy.
 - **Games saved before accounts existed** have no owner. The first account that is ever created takes them over, so create your own account first.
 - **Profile pictures** are saved as files in `avatars/`, named after the account id, not inside `users.json`. The server only takes a JPEG of up to 512 KB and 1024 pixels on each side, and checks the size in the file's header before keeping it. `users.json` holds `avatarAt`, the time the picture was set, which is also the version in the picture's address.
-- `users.json`, `sessions.json`, `wishlist.json`, `comments.json` and `avatars/` are listed in `.gitignore`. Don't commit them.
+- **Friends** are one record per pair of accounts in `friends.json`: a request from one account to another, which becomes a friendship when it is accepted. Adding someone who has already asked you accepts their request.
+- **Who sees what.** Any signed-in player can open another player's profile from their name in a game's forum, and sees their name, picture, join date and number of friends. Their collection and wishlist go only to their friends (and to them). A guest or a signed-out visitor can't open profiles.
+- `users.json`, `sessions.json`, `wishlist.json`, `comments.json`, `friends.json` and `avatars/` are listed in `.gitignore`. Don't commit them.
 
-Environment variables, all optional: `PORT` (default 3000), `DATA_DIR` (where the JSON files are kept, default the folder of `server.js`), `RAWG_API_KEY`, `TRENDING_DAYS` (how far back the trending list looks, default 120) and `COOKIE_SECURE`.
+Environment variables, all optional: `PORT` (default 3000), `DATA_DIR` (where the JSON files are kept, default the folder of `server.js`), `RAWG_API_KEY`, `TRENDING_DAYS` (how far back the fallback trending list looks, default 120) and `COOKIE_SECURE`.
 
 ## Troubleshooting
 

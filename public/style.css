@@ -192,11 +192,29 @@ a.brand:focus-visible {
   --sw: 4.4;
 }
 
-.account-link > span:last-child {
+.account-link .account-name {
   max-width: 18ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* How many friend requests are waiting for you */
+.account-badge {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--white);
+  background: var(--navy);
+  border: 2px solid var(--black);
 }
 
 /* The icon, or the player's picture once they have set one */
@@ -2455,7 +2473,32 @@ input[aria-invalid="true"]:focus-visible {
 
 .forum-author {
   font-weight: 900;
+  color: var(--black);
+  text-decoration: none;
   overflow-wrap: anywhere;
+}
+
+/* The name is a link to the player's profile, marked like the other links in the app */
+.forum-author:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--amber);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 3px;
+}
+
+.forum-author:focus-visible {
+  outline: var(--bw) solid var(--black);
+  outline-offset: 2px;
+}
+
+.forum-avatar-link {
+  display: block;
+  align-self: start;
+  line-height: 0;
+}
+
+.forum-avatar-link:hover .avatar {
+  background: var(--black);
 }
 
 .forum-you {
@@ -2782,4 +2825,90 @@ input[aria-invalid="true"]:focus-visible {
     height: 104px;
     font-size: 2.8rem;
   }
+}
+
+/* ---------- Friends ---------- */
+
+/* People in a list: friends, requests you got and requests you sent */
+.people {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.people:empty {
+  display: none;
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  padding: 10px 12px;
+  background: var(--gray);
+  border: var(--bw) solid var(--black);
+  box-shadow: 4px 4px 0 var(--black);
+  transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
+}
+
+.person:hover {
+  background: var(--white);
+  box-shadow: 6px 6px 0 var(--black);
+  transform: translate(-2px, -2px);
+}
+
+/* Wide enough that a long name drops its buttons to a second line instead of being cut short */
+.person-link {
+  display: flex;
+  flex: 1 1 200px;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  font-weight: 800;
+  color: var(--black);
+  text-decoration: none;
+}
+
+.person-link:focus-visible {
+  outline: var(--bw) solid var(--black);
+  outline-offset: 3px;
+}
+
+.person-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.person-link:hover .person-name {
+  text-decoration: underline;
+  text-decoration-color: var(--amber);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 3px;
+}
+
+.person-actions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* "Show more" under another player's shelf */
+.shelf-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+/* Beside a name on a player's page: friends, or a request sent */
+.profile-actions .chip-badge {
+  align-self: center;
+  padding: 6px 10px;
 }

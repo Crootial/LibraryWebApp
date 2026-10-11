@@ -1,10 +1,11 @@
-const PANEL_NAMES = ["home", "collection", "wishlist", "lookup", "add", "account", "game"];
+const PANEL_NAMES = ["home", "collection", "wishlist", "lookup", "add", "account", "game", "user"];
 
 function initTabs() {
   const tabs = [...document.querySelectorAll('[role="tab"]')];
   const panels = [...document.querySelectorAll(".panel")];
   const bar = document.querySelector(".tabbar");
   let shown = "home";
+  let shownHash = location.hash;
   let before = "home";
 
   const fromAddress = () => {
@@ -21,10 +22,12 @@ function initTabs() {
   }
 
   function show(name) {
-    if (shown !== "account" && shown !== "game" && name !== shown) before = shown;
-    // A game opened from the profile's shelves goes back to the profile, not to the tab before it
+    if (shown !== "account" && shown !== "game" && shown !== "user" && name !== shown) before = shown;
+    // A game opened from a profile's shelves goes back to that profile, not to the tab before it
     else if (shown === "account" && name === "game") before = "account";
+    else if (shown === "user" && name === "game") before = shownHash.slice(1);
     shown = name;
+    shownHash = location.hash;
     for (const panel of panels) panel.hidden = panel.id !== "panel-" + name;
     for (const tab of tabs) {
       const on = tab.dataset.tab === name;

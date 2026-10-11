@@ -1,6 +1,7 @@
 const express = require("express");
 const db = require("./db");
 const auth = require("./auth");
+const friends = require("./friends");
 
 // The page shrinks a picture to a 256 pixel JPEG before sending it. These limits are for anything
 // else that calls the route, and for the browsers that will draw the picture beside a comment.
@@ -48,8 +49,23 @@ function pictureBody(req, res, next) {
   });
 }
 
+// What a game or wishlist entry shows to a friend. The owner's account id stays out of it.
+const SHELF_FIELDS = [
+  "id", "rawg_id", "title", "released", "rating", "image", "platforms", "genres",
+  "developers", "publishers", "website", "esrb", "metacritic", "playtime",
+];
+const SHELF_MAX = 200;
+
+function shelf(list, userId) {
+  const owned = list.filter((item) => item.userId === userId).sort((a, b) => b.id - a.id);
+  const items = owned.slice(0, SHELF_MAX).map((item) =>
+    Object.fromEntries(SHELF_FIELDS.filter((field) => item[field] !== undefined).map((field) => [field, item[field]])));
+  return { total: owned.length, items };
+}
+
 const router = express.Router();
 const requireMember = auth.requireMember("change your profile picture");
+const requireViewer = auth.requireMember("view profiles");
 
 // Anyone can see a picture, because comments show it. People are found by username, so no account id is exposed.
 router.get("/:username/avatar", (req, res) => {
@@ -70,6 +86,36 @@ router.get("/:username/avatar", (req, res) => {
   } catch (error) {
     console.error("Picture Read Error:", error);
     res.status(500).json({ error: "Failed to load the picture" });
+  }
+});
+
+// Another player's profile. Any member can see who they are and how they stand with them, but the
+// collection and wishlist only go to friends, and to the owner.
+router.get("/:username", requireViewer, (req, res) => {
+  try {
+    const key = String(req.params.username).toLowerCase();
+    const person = db.users.read().find((u) => u.key === key && !u.isGuest);
+    if (!person) return res.status(404).json({ error: "No one has that username." });
+
+    const links = db.friends.read();
+    const relation = person.id === req.user.id ? "self" : friends.relation(links, req.user.id, person.id);
+    const profile = {
+      username: person.username,
+      avatarAt: person.avatarAt ?? null,
+      createdAt: person.createdAt,
+      relation,
+      friendCount: friends.friendCount(links, person.id),
+      collection: null,
+      wishlist: null,
+    };
+    if (relation === "self" || relation === "friends") {
+      profile.collection = shelf(db.read(), person.id);
+      profile.wishlist = shelf(db.wishlist.read(), person.id);
+    }
+    res.json(profile);
+  } catch (error) {
+    console.error("Profile Read Error:", error);
+    res.status(500).json({ error: "Failed to load the profile" });
   }
 });
 

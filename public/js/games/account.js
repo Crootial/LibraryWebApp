@@ -12,19 +12,21 @@ function renderAccount() {
   $("member-wishes").textContent = store.wishlist.length;
   $("member-since").textContent = (user && formatDate(user.createdAt)) || "-";
   renderProfile();
+  renderFriends();
 }
 
 function applyUser() {
   const { user } = store;
   store.games = [];
   store.wishlist = [];
-  store.loaded = { games: false, wishlist: false };
+  store.friends = { friends: [], incoming: [], outgoing: [] };
+  store.loaded = { games: false, wishlist: false, friends: false };
 
   const isRealUser = user && !user.isGuest;
   $("account-heading").textContent = isRealUser ? "Profile" : "Account";
   $("account-name").textContent = isRealUser ? user.username : (user ? "Guest" : "Sign in");
   renderAccountLink();
-  $("account-link").setAttribute("aria-label", user ? "Your account: " + user.username : "Sign in or create an account");
+  renderAccountBadge();
   $("account-link").hidden = false;
   $("stat").hidden = !user;
   $("account-guest").hidden = isRealUser;
@@ -41,10 +43,13 @@ function applyUser() {
   if (user) {
     loadGames();
     loadWishlist();
+    loadFriends();
   } else {
     $("games").removeAttribute("aria-busy");
     $("wishlist").removeAttribute("aria-busy");
   }
+  // A player's page that was open (or opened by its address) needs to know who is signed in now
+  if (location.hash.startsWith("#user")) showPerson();
 }
 
 async function signInWith(form, path, body, busyLabel, welcome) {

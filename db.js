@@ -42,6 +42,7 @@ exports.wishlist = table("wishlist.json");
 exports.users = table("users.json");
 exports.sessions = table("sessions.json");
 exports.comments = table("comments.json");
+exports.friends = table("friends.json");
 
 // Profile pictures are files, not JSON: one JPEG per account, named after the account's id.
 const AVATAR_DIR = path.join(DIR, "avatars");
