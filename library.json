@@ -1,1 +1,168 @@
-[]
+[
+  {
+    "id": 1790996432031,
+    "rawg_id": 1002691,
+    "title": "Star Wars Zero Company",
+    "released": "2026-08-27",
+    "rating": 3.38,
+    "image": "https://media.rawg.io/media/games/dae/dae6fd03dd5edbf15b193f20bec3cd58.jpg",
+    "platforms": [
+      "PC",
+      "PlayStation 5",
+      "Xbox Series S/X"
+    ],
+    "genres": [
+      "Strategy"
+    ],
+    "userId": "ed018fb8-1ee8-4543-b9b7-cfab4c84c6d0"
+  },
+  {
+    "id": 1790996453340,
+    "rawg_id": 455532,
+    "title": "Star Wars: Squadrons",
+    "released": "2020-10-02",
+    "rating": 3.16,
+    "image": "https://media.rawg.io/media/games/b19/b191ff2b8ccb646d1d2d9297ed5c7e89.jpg",
+    "platforms": [
+      "PC",
+      "Xbox One",
+      "PlayStation 4"
+    ],
+    "genres": [
+      "Action",
+      "Simulation"
+    ],
+    "userId": "ed018fb8-1ee8-4543-b9b7-cfab4c84c6d0"
+  },
+  {
+    "id": 1790996463645,
+    "rawg_id": 3052,
+    "title": "STAR WARS Battlefront",
+    "released": "2015-11-17",
+    "rating": 3.29,
+    "image": "https://media.rawg.io/media/games/bd2/bd2cc7714e0b9b1adad1ba1b2400d436.jpg",
+    "platforms": [
+      "PC",
+      "Xbox One",
+      "PlayStation 4"
+    ],
+    "genres": [
+      "Strategy",
+      "Shooter",
+      "Adventure",
+      "Action"
+    ],
+    "userId": "ed018fb8-1ee8-4543-b9b7-cfab4c84c6d0"
+  },
+  {
+    "id": 1790996466460,
+    "rawg_id": 28152,
+    "title": "STAR WARS Battlefront II",
+    "released": "2017-11-17",
+    "rating": 3.58,
+    "image": "https://media.rawg.io/media/games/f54/f54e9fb2f4aac37810ea1a69a3e4480a.jpg",
+    "platforms": [
+      "PC",
+      "Xbox One",
+      "PlayStation 4"
+    ],
+    "genres": [
+      "Shooter",
+      "Adventure",
+      "Action"
+    ],
+    "userId": "ed018fb8-1ee8-4543-b9b7-cfab4c84c6d0"
+  },
+  {
+    "id": 1790999575285,
+    "rawg_id": 573118,
+    "title": "Gothic 1 Remake",
+    "released": "2026-06-05",
+    "rating": 3.71,
+    "image": "https://media.rawg.io/media/games/f24/f24d20c6fddb77fe83d39cbfd7d4687f.jpg",
+    "platforms": [
+      "PC",
+      "PlayStation 5",
+      "Xbox One",
+      "PlayStation 4",
+      "Xbox Series S/X"
+    ],
+    "genres": [
+      "Action",
+      "RPG"
+    ],
+    "userId": "ed018fb8-1ee8-4543-b9b7-cfab4c84c6d0"
+  },
+  {
+    "id": 1791734877995,
+    "rawg_id": 1015409,
+    "title": "Control Resonant",
+    "released": "2026-09-24",
+    "rating": 4.3,
+    "image": "https://media.rawg.io/media/games/bfc/bfc7b45c6e9d3e21bb1c613c16c088f2.jpeg",
+    "platforms": [
+      "PC",
+      "PlayStation 5",
+      "Xbox Series S/X"
+    ],
+    "genres": [
+      "Adventure",
+      "Action"
+    ],
+    "userId": "42012a15-6074-483f-8c78-ae121b1867d3"
+  },
+  {
+    "id": 1791734878903,
+    "rawg_id": 1004520,
+    "title": "Resonance: A Plague Tale Legacy",
+    "released": "2026-08-27",
+    "rating": 4.1,
+    "image": "https://media.rawg.io/media/games/c55/c55cc53bdf3cc4ee6f0a39f3c8b1dca7.jpg",
+    "platforms": [
+      "PC",
+      "PlayStation 5",
+      "Xbox Series S/X"
+    ],
+    "genres": [
+      "Adventure",
+      "Action"
+    ],
+    "userId": "42012a15-6074-483f-8c78-ae121b1867d3"
+  },
+  {
+    "id": 1791734880310,
+    "rawg_id": 983213,
+    "title": "Gears of War: E-Day",
+    "released": "2026-10-06",
+    "rating": 3.75,
+    "image": "https://media.rawg.io/media/games/c85/c85991ad8164824715377e603a2d7693.jpg",
+    "platforms": [
+      "PC",
+      "Xbox Series S/X"
+    ],
+    "genres": [
+      "Adventure",
+      "Action"
+    ],
+    "userId": "42012a15-6074-483f-8c78-ae121b1867d3"
+  },
+  {
+    "id": 1791734881149,
+    "rawg_id": 994600,
+    "title": "Onimusha: Way Of The Sword",
+    "released": "2026-09-04",
+    "rating": 4.21,
+    "image": "https://media.rawg.io/media/games/48e/48ea2f7adb60615d658887899ffe4d1f.jpg",
+    "platforms": [
+      "PC",
+      "PlayStation 5",
+      "Xbox Series S/X"
+    ],
+    "genres": [
+      "Adventure",
+      "Action",
+      "RPG"
+    ],
+    "userId": "42012a15-6074-483f-8c78-ae121b1867d3"
+  }
+]
