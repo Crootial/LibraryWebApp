@@ -18,14 +18,15 @@ function applyUser() {
   store.games = [];
   store.wishlist = [];
 
-  $("account-name").textContent = user ? user.username : "Sign in";
+  const isRealUser = user && !user.isGuest;
+  $("account-name").textContent = isRealUser ? user.username : (user ? "Guest" : "Sign in");
   $("account-link").setAttribute("aria-label", user ? "Your account: " + user.username : "Sign in or create an account");
   $("account-link").hidden = false;
   $("stat").hidden = !user;
-  $("account-guest").hidden = Boolean(user);
-  $("account-member").hidden = !user;
+  $("account-guest").hidden = isRealUser;
+  $("account-member").hidden = !isRealUser;
   $("filter").closest(".search").hidden = !user;
-  $("home-hint").textContent = HOME_HINT + (user ? "" : " Sign in to save any of them.");
+  $("home-hint").textContent = HOME_HINT;
 
   $("add-form").hidden = !user;
   $("add-hint").hidden = !user;
@@ -95,6 +96,7 @@ function initSignOut() {
     setBusy(button, true, "Signing out");
     try {
       await api("/api/auth/logout", { method: "POST" });
+      try { localStorage.removeItem("mgv_token"); } catch {}
       store.user = null;
       applyUser();
       location.hash = "home";

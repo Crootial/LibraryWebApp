@@ -236,4 +236,99 @@
   <symbol id="other" viewBox="0 0 48 48">
     <path fill="currentColor" d="M10 8h4v4h-4zM34 8h4v4h-4zM14 12h4v4h-4zM30 12h4v4h-4zM10 16h28v4h-28zM6 20h8v4h-8zM18 20h12v4h-12zM34 20h8v4h-8zM2 24h44v4h-44zM2 28h4v4h-4zM10 28h28v4h-28zM42 28h4v4h-4zM2 32h4v4h-4zM10 32h4v4h-4zM34 32h4v4h-4zM42 32h4v4h-4zM14 36h8v4h-8zM26 36h8v4h-8z"/>
   </symbol>
+
+  <symbol id="arrow-left" viewBox="0 0 48 48">
+    <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)" d="M38 24H10M22 12l-12 12 12 12"/>
+  </symbol>
+
+  <symbol id="clock" viewBox="0 0 48 48">
+    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)">
+      <circle cx="24" cy="24" r="18"/>
+      <path d="M24 14v10l7 4"/>
+    </g>
+  </symbol>
+
+  <symbol id="target" viewBox="0 0 48 48">
+    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)">
+      <circle cx="24" cy="24" r="18"/>
+      <circle cx="24" cy="24" r="11"/>
+      <circle cx="24" cy="24" r="4" fill="currentColor"/>
+    </g>
+  </symbol>
+
+  <symbol id="thumbs-up" viewBox="0 0 48 48">
+    <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)" d="M10 20v20M4 20h6v20H4zM10 38h19c3 0 5-2 5-5 0-1.5-.5-2.8-1.5-3.5 2-1 3.5-3 3.5-5.5 0-2-1.2-3.8-3-4.5.6-1 .9-2.2.9-3.5 0-3-2.5-5.5-5.5-5.5H23l1.8-7.5c.3-1.5-.7-3-2.3-3-.9 0-1.8.5-2.2 1.3L10 20z"/>
+  </symbol>
+
+  <symbol id="smile-meh" viewBox="0 0 48 48">
+    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)">
+      <circle cx="24" cy="24" r="18"/>
+      <path d="M16 30h16"/>
+      <circle cx="17" cy="19" r="2" fill="currentColor"/>
+      <circle cx="31" cy="19" r="2" fill="currentColor"/>
+    </g>
+  </symbol>
+
+  <symbol id="stop-circle" viewBox="0 0 48 48">
+    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)">
+      <circle cx="24" cy="24" r="18"/>
+      <path d="M16 16l16 16"/>
+    </g>
+  </symbol>
+
+  <symbol id="gift" viewBox="0 0 48 48">
+    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)">
+      <rect x="6" y="16" width="36" height="8" rx="2"/>
+      <rect x="9" y="24" width="30" height="18" rx="2"/>
+      <path d="M24 16v26"/>
+      <path d="M24 16c-3-6-9-6-10-3-1.3 3.5 5 7 10 7M24 16c3-6 9-6 10-3 1.3 3.5-5 7-10 7"/>
+    </g>
+  </symbol>
+
+  <symbol id="folder" viewBox="0 0 48 48">
+    <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)" d="M6 12a4 4 0 0 1 4-4h8l5 5h15a4 4 0 0 1 4 4v20a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4V12z"/>
+  </symbol>
+
+  <symbol id="edit" viewBox="0 0 48 48">
+    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)">
+      <path d="M30 8l10 10L14 44H4v-10L30 8z"/>
+      <path d="M24 14l10 10"/>
+    </g>
+  </symbol>
+
+  <symbol id="steam" viewBox="0 0 48 48">
+    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)">
+      <circle cx="24" cy="24" r="19"/>
+      <circle cx="34" cy="18" r="4.5" fill="currentColor"/>
+      <circle cx="18" cy="29" r="6"/>
+      <circle cx="18" cy="29" r="3" fill="currentColor"/>
+      <path d="M30.5 19.5L22 26M13.5 32L8 35M23 32l5 4"/>
+    </g>
+  </symbol>
+
+  <symbol id="external" viewBox="0 0 48 48">
+    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)">
+      <path d="M28 8h12v12M40 8L20 28M36 24v16H8V12h16"/>
+    </g>
+  </symbol>
+
+  <symbol id="check" viewBox="0 0 48 48">
+    <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)" d="M10 24l9 9 19-19"/>
+  </symbol>
+
+  <symbol id="cross" viewBox="0 0 48 48">
+    <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)" d="M12 12l24 24M36 12L12 36"/>
+  </symbol>
+
+  <symbol id="chevron-left" viewBox="0 0 48 48">
+    <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)" d="M30 10L16 24l14 14"/>
+  </symbol>
+
+  <symbol id="chevron-right" viewBox="0 0 48 48">
+    <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)" d="M18 10l14 14-14 14"/>
+  </symbol>
+
+  <symbol id="maximize" viewBox="0 0 48 48">
+    <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--sw,3)" d="M8 18V8h10M40 18V8H30M8 30v10h10M40 30v10H30"/>
+  </symbol>
 </svg>

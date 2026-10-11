@@ -6,6 +6,8 @@ const auth = require("./auth");
 
 const app = express();
 
+app.set("trust proxy", 1);
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
@@ -275,19 +277,76 @@ app.get("/api/lookup/:id", async (req, res) => {
   }
 
   try {
-    const response = await axios.get("https://api.rawg.io/api/games/" + id, {
-      params: { key: RAWG_API_KEY },
-      timeout: 10000,
-    });
-    const game = response.data;
+    const [gameRes, screenRes] = await Promise.all([
+      axios.get("https://api.rawg.io/api/games/" + id, {
+        params: { key: RAWG_API_KEY },
+        timeout: 10000,
+      }),
+      axios.get("https://api.rawg.io/api/games/" + id + "/screenshots", {
+        params: { key: RAWG_API_KEY },
+        timeout: 8000,
+      }).catch(() => null),
+    ]);
+
+    const game = gameRes.data;
+    const screenshots = (screenRes?.data?.results || [])
+      .map((s) => s.image)
+      .filter(Boolean);
+
+    if (!screenshots.length) {
+      if (game.background_image) screenshots.push(game.background_image);
+      if (game.background_image_additional) screenshots.push(game.background_image_additional);
+    }
 
     res.json({
-      developers: (game.developers || []).map((d) => d.name),
-      publishers: (game.publishers || []).map((p) => p.name),
+      id: game.id,
+      rawg_id: game.id,
+      name: game.name,
+      title: game.name,
+      description_raw: game.description_raw || game.description || "",
+      description: game.description || game.description_raw || "",
+      released: game.released || null,
+      rating: game.rating || null,
+      rating_top: game.rating_top || null,
+      ratings: game.ratings || [],
+      ratings_count: game.ratings_count || 0,
+      reviews_count: game.reviews_count || 0,
+      playtime: game.playtime || null,
+      metacritic: game.metacritic || null,
       website: game.website || null,
       esrb: game.esrb_rating ? game.esrb_rating.name : null,
-      metacritic: game.metacritic || null,
-      playtime: game.playtime || null,
+      developers: (game.developers || []).map((d) => d.name),
+      publishers: (game.publishers || []).map((p) => p.name),
+      genres: (game.genres || []).map((g) => g.name),
+      tags: (game.tags || []).map((t) => t.name),
+      platforms: (game.platforms || []).map((p) => ({
+        name: p.platform ? p.platform.name : "",
+        requirements: p.requirements || null,
+      })),
+      stores: (game.stores || []).map((s) => {
+        let storeUrl = s.url;
+        if (!storeUrl || !storeUrl.startsWith("http")) {
+          if (s.store?.domain === "store.steampowered.com") {
+            storeUrl = `https://store.steampowered.com/search/?term=${encodeURIComponent(game.name)}`;
+          } else if (s.store?.domain) {
+            storeUrl = `https://${s.store.domain}`;
+          } else {
+            storeUrl = `https://www.google.com/search?q=${encodeURIComponent(game.name + " " + (s.store?.name || ""))}`;
+          }
+        }
+        return {
+          id: s.store?.id,
+          name: s.store ? s.store.name : "Store",
+          domain: s.store ? s.store.domain : "",
+          url: storeUrl,
+        };
+      }),
+      background_image: game.background_image || null,
+      background_image_additional: game.background_image_additional || null,
+      image: game.background_image || null,
+      screenshots,
+      clip: game.clip ? (game.clip.clip || game.clip.video) : null,
+      updated: game.updated || null,
     });
   } catch (error) {
     if (error.response?.status === 404) {
@@ -300,6 +359,6 @@ app.get("/api/lookup/:id", async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-  console.log("Server running at http://localhost:" + PORT);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log("Server running at http://0.0.0.0:" + PORT);
 });

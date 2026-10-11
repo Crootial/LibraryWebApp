@@ -30,10 +30,28 @@ function saveActions(result) {
 function resultRow(result) {
   const rating = ratingOf(result);
   const facts = [yearOf(result), rating && rating.toFixed(1) + " / 5"].filter(Boolean).join(" · ");
+  const titleEl = el("p", {
+    class: "result-title clickable-title",
+    text: result.title,
+    role: "button",
+    tabindex: "0",
+    "aria-label": "View details for " + result.title,
+  });
+  const handleOpen = (e) => {
+    e.stopPropagation();
+    if (typeof openGameDetail === "function") openGameDetail(result);
+  };
+  titleEl.addEventListener("click", handleOpen);
+  titleEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleOpen(e);
+    }
+  });
   return el("li", { class: "result" },
     cover(result, "sm"),
     el("div", { class: "result-body" },
-      el("p", { class: "result-title", text: result.title }),
+      titleEl,
       facts ? el("p", { class: "result-meta", text: facts }) : null,
       el("p", { class: "tags" }, ...platformTags(result).map(platformChip)),
       saveActions(result),

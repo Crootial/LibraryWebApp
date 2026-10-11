@@ -8,7 +8,13 @@ function el(tag, props = {}, ...children) {
   for (const [key, value] of Object.entries(props)) {
     if (key === "class") node.className = value;
     else if (key === "text") node.textContent = value;
-    else node.setAttribute(key, value);
+    else if (key.startsWith("on") && typeof value === "function") {
+      node.addEventListener(key.slice(2).toLowerCase(), value);
+    } else if (key in node && typeof value !== "string" && typeof value !== "number") {
+      node[key] = value;
+    } else {
+      node.setAttribute(key, value);
+    }
   }
   for (const child of children) {
     if (child != null && child !== false) node.append(child);
@@ -29,10 +35,17 @@ function icon(id) {
 
 async function api(path, options = {}) {
   const init = { method: options.method || "GET", signal: AbortSignal.timeout(20000) };
+  const headers = { ...(options.headers || {}) };
   if (options.body) {
-    init.headers = { "Content-Type": "application/json" };
+    headers["Content-Type"] = "application/json";
     init.body = JSON.stringify(options.body);
   }
+  try {
+    const token = localStorage.getItem("mgv_token");
+    if (token) headers["x-session-token"] = token;
+  } catch {}
+  init.headers = headers;
+
   let res;
   try {
     res = await fetch(path, init);
@@ -42,8 +55,14 @@ async function api(path, options = {}) {
       : "Can't reach the server. Is it running?");
   }
   const data = await res.json().catch(() => ({}));
+  if (data && data.token) {
+    try { localStorage.setItem("mgv_token", data.token); } catch {}
+  }
   if (!res.ok) {
-    if (res.status === 401 && !path.startsWith("/api/auth/")) window.dispatchEvent(new Event("session-ended"));
+    if (res.status === 401 && !path.startsWith("/api/auth/")) {
+      try { localStorage.removeItem("mgv_token"); } catch {}
+      window.dispatchEvent(new Event("session-ended"));
+    }
     const error = new Error(data.error || "Something went wrong (" + res.status + ").");
     error.status = res.status;
     throw error;

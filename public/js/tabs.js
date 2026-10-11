@@ -1,4 +1,4 @@
-const PANEL_NAMES = ["home", "collection", "wishlist", "lookup", "add", "account"];
+const PANEL_NAMES = ["home", "collection", "wishlist", "lookup", "add", "account", "game"];
 
 function initTabs() {
   const tabs = [...document.querySelectorAll('[role="tab"]')];
@@ -8,7 +8,8 @@ function initTabs() {
   let before = "home";
 
   const fromAddress = () => {
-    const name = location.hash.slice(1);
+    const raw = location.hash.slice(1);
+    const name = raw.split(/[:?&]/)[0];
     return PANEL_NAMES.includes(name) ? name : "home";
   };
 
@@ -20,7 +21,7 @@ function initTabs() {
   }
 
   function show(name) {
-    if (shown !== "account" && name !== shown) before = shown;
+    if (shown !== "account" && shown !== "game" && name !== shown) before = shown;
     shown = name;
     for (const panel of panels) panel.hidden = panel.id !== "panel-" + name;
     for (const tab of tabs) {
@@ -31,8 +32,12 @@ function initTabs() {
     }
     // Ensure first tab remains keyboard-accessible if none selected
     if (!tabs.some((tab) => tab.tabIndex === 0)) tabs[0].tabIndex = 0;
-    const gap = $("panel-" + name).getBoundingClientRect().top - bar.getBoundingClientRect().height;
-    if (gap < 0) window.scrollBy(0, gap - 16);
+    const currentPanel = $("panel-" + name);
+    if (currentPanel) {
+      const gap = currentPanel.getBoundingClientRect().top - bar.getBoundingClientRect().height;
+      if (gap < 0) window.scrollBy(0, gap - 16);
+    }
+    window.dispatchEvent(new CustomEvent("tab-shown", { detail: { name, hash: location.hash } }));
   }
 
   for (const tab of tabs) {

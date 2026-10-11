@@ -83,25 +83,38 @@ function readCookie(req, name) {
   return null;
 }
 
-const cookieOptions = (req) => ({
-  httpOnly: true,
-  sameSite: "lax",
-  secure: req.secure || process.env.COOKIE_SECURE === "true",
-});
+function readToken(req) {
+  const header = req.headers["x-session-token"] ||
+    (typeof req.headers["authorization"] === "string" && req.headers["authorization"].startsWith("Bearer ")
+      ? req.headers["authorization"].slice(7)
+      : null);
+  if (header && header.trim()) return header.trim();
+  return readCookie(req, COOKIE);
+}
+
+const cookieOptions = (req) => {
+  const isSecure = req.secure || req.headers["x-forwarded-proto"] === "https" || process.env.COOKIE_SECURE === "true" || process.env.NODE_ENV === "production" || !req.hostname.includes("localhost");
+  return {
+    httpOnly: true,
+    sameSite: isSecure ? "none" : "lax",
+    secure: Boolean(isSecure),
+  };
+};
 
 function startSession(req, res, user) {
   const token = crypto.randomBytes(32).toString("base64url");
   const now = Date.now();
-  const previous = readCookie(req, COOKIE);
+  const previous = readToken(req);
   const replaced = previous && fingerprint(previous);
   const sessions = db.sessions.read().filter((s) => s.expires > now && s.token !== replaced);
   sessions.push({ token: fingerprint(token), userId: user.id, expires: now + SESSION_MS });
   db.sessions.write(sessions);
   res.cookie(COOKIE, token, { ...cookieOptions(req), maxAge: SESSION_MS });
+  return token;
 }
 
 function currentUser(req) {
-  const token = readCookie(req, COOKIE);
+  const token = readToken(req);
   if (!token) return null;
   const print = fingerprint(token);
   const session = db.sessions.read().find((s) => s.token === print && s.expires > Date.now());
@@ -112,28 +125,49 @@ function currentUser(req) {
 function requireAuth(req, res, next) {
   try {
     req.user = currentUser(req);
+    if (!req.user) {
+      const guestId = "guest_" + crypto.randomUUID().slice(0, 8);
+      const guest = {
+        id: guestId,
+        username: "Guest",
+        key: guestId,
+        createdAt: new Date().toISOString(),
+        isGuest: true,
+      };
+      const users = db.users.read();
+      users.push(guest);
+      db.users.write(users);
+      startSession(req, res, guest);
+      req.user = guest;
+    }
   } catch (error) {
     console.error("Session Error:", error);
     return res.status(500).json({ error: "Failed to check your sign-in" });
   }
   res.set("Cache-Control", "no-store");
-  if (!req.user) return res.status(401).json({ error: "Sign in to continue." });
   next();
 }
 
 const publicUser = (user) =>
-  user ? { id: user.id, username: user.username, createdAt: user.createdAt } : null;
+  user ? { id: user.id, username: user.username, createdAt: user.createdAt, isGuest: Boolean(user.isGuest) } : null;
 
-// Migrate unassigned legacy games to first registered account
+// Migrate unassigned or guest games to the registered account
 function adoptSavedGames(user) {
   try {
     const games = db.read();
-    const loose = games.filter((game) => game.userId === undefined);
-    if (!loose.length) return;
-    for (const game of loose) game.userId = user.id;
-    db.write(games);
+    const loose = games.filter((game) => game.userId === undefined || String(game.userId).startsWith("guest_"));
+    if (loose.length) {
+      for (const game of loose) game.userId = user.id;
+      db.write(games);
+    }
+    const wishlist = db.wishlist.read();
+    const looseWish = wishlist.filter((item) => item.userId === undefined || String(item.userId).startsWith("guest_"));
+    if (looseWish.length) {
+      for (const item of looseWish) item.userId = user.id;
+      db.wishlist.write(wishlist);
+    }
   } catch (error) {
-    console.error("Could not give the saved games to the first account:", error);
+    console.error("Could not give the saved games to the account:", error);
   }
 }
 
@@ -169,8 +203,8 @@ router.post("/register", async (req, res) => {
     db.users.write(users);
     if (users.length === 1) adoptSavedGames(user);
 
-    startSession(req, res, user);
-    res.status(201).json({ user: publicUser(user) });
+    const token = startSession(req, res, user);
+    res.status(201).json({ user: publicUser(user), token });
   } catch (error) {
     console.error("Register Error:", error);
     res.status(500).json({ error: "Failed to create the account" });
@@ -199,8 +233,9 @@ router.post("/login", async (req, res) => {
     }
 
     failed.delete(who);
-    startSession(req, res, user);
-    res.json({ user: publicUser(user) });
+    adoptSavedGames(user);
+    const token = startSession(req, res, user);
+    res.json({ user: publicUser(user), token });
   } catch (error) {
     console.error("Login Error:", error);
     res.status(500).json({ error: "Failed to sign in" });
@@ -209,7 +244,7 @@ router.post("/login", async (req, res) => {
 
 router.post("/logout", (req, res) => {
   try {
-    const token = readCookie(req, COOKIE);
+    const token = readToken(req);
     if (token) {
       const print = fingerprint(token);
       db.sessions.write(db.sessions.read().filter((s) => s.token !== print));
@@ -224,7 +259,23 @@ router.post("/logout", (req, res) => {
 
 router.get("/me", (req, res) => {
   try {
-    res.json({ user: publicUser(currentUser(req)) });
+    let user = currentUser(req);
+    let token = readToken(req);
+    if (!user) {
+      const guestId = "guest_" + crypto.randomUUID().slice(0, 8);
+      user = {
+        id: guestId,
+        username: "Guest",
+        key: guestId,
+        createdAt: new Date().toISOString(),
+        isGuest: true,
+      };
+      const users = db.users.read();
+      users.push(user);
+      db.users.write(users);
+      token = startSession(req, res, user);
+    }
+    res.json({ user: publicUser(user), token });
   } catch (error) {
     console.error("Session Error:", error);
     res.status(500).json({ error: "Failed to check your sign-in" });

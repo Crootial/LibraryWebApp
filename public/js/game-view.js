@@ -50,9 +50,11 @@ function cover(game, size = "") {
   const first = platformTags(game)[0];
   const platform = first ? first.platform : platformById("other");
   const tile = el("div", {
-    class: "cover" + (size ? " cover-" + size : ""),
+    class: "cover" + (size ? " cover-" + size : "") + " cover-clickable",
     "data-brand": platform.brand,
-    "aria-hidden": "true",
+    role: "button",
+    tabindex: "0",
+    "aria-label": "View details for " + (game.title || "game"),
   }, icon(platform.id));
   const image = imageOf(game);
   if (image) {
@@ -63,6 +65,17 @@ function cover(game, size = "") {
     });
     tile.append(art);
   }
+  const handleOpen = (e) => {
+    e.stopPropagation();
+    if (typeof openGameDetail === "function") openGameDetail(game);
+  };
+  tile.addEventListener("click", handleOpen);
+  tile.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleOpen(e);
+    }
+  });
   return tile;
 }
 
@@ -84,8 +97,26 @@ function cardBody(game, className = "game-body") {
   const rating = ratingOf(game);
   const year = yearOf(game);
   const genres = genresOf(game);
+  const titleEl = el("h3", {
+    class: "game-title clickable-title",
+    text: game.title || "Untitled game",
+    role: "button",
+    tabindex: "0",
+    "aria-label": "View details for " + (game.title || "game"),
+  });
+  const handleOpen = (e) => {
+    e.stopPropagation();
+    if (typeof openGameDetail === "function") openGameDetail(game);
+  };
+  titleEl.addEventListener("click", handleOpen);
+  titleEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleOpen(e);
+    }
+  });
   return el("div", { class: className },
-    el("h3", { class: "game-title", text: game.title || "Untitled game" }),
+    titleEl,
     genres.length ? el("p", { class: "game-meta", text: genres.slice(0, 3).join(" · ") }) : null,
     el("p", { class: "tags" },
       rating ? ratingChip(rating) : null,
