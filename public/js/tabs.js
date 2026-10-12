@@ -1,3 +1,4 @@
+// Hash navigation: #home, #collection, ... picks the panel to show; #game:<id> and #user:<name> carry a name too
 const PANEL_NAMES = ["home", "collection", "wishlist", "lookup", "add", "account", "game", "user"];
 
 function initTabs() {
@@ -6,14 +7,14 @@ function initTabs() {
   const bar = document.querySelector(".tabbar");
   let shown = "home";
   let shownHash = location.hash;
-  let before = "home";
+  let before = "home"; // where Back goes
 
   const fromAddress = () => {
-    const raw = location.hash.slice(1);
-    const name = raw.split(/[:?&]/)[0];
+    const name = location.hash.slice(1).split(/[:?&]/)[0];
     return PANEL_NAMES.includes(name) ? name : "home";
   };
 
+  // Scroll the tab strip so the current tab is in view
   function keepInView(tab) {
     const strip = tab.parentElement;
     const over = tab.offsetLeft + tab.offsetWidth + 8 - (strip.scrollLeft + strip.clientWidth);
@@ -22,7 +23,7 @@ function initTabs() {
   }
 
   function show(name) {
-    if (shown !== "account" && shown !== "game" && shown !== "user" && name !== shown) before = shown;
+    if (!["account", "game", "user"].includes(shown) && name !== shown) before = shown;
     // A game opened from a profile's shelves goes back to that profile, not to the tab before it
     else if (shown === "account" && name === "game") before = "account";
     else if (shown === "user" && name === "game") before = shownHash.slice(1);
@@ -35,26 +36,20 @@ function initTabs() {
       tab.tabIndex = on ? 0 : -1;
       if (on) keepInView(tab);
     }
-    // Ensure first tab remains keyboard-accessible if none selected
-    if (!tabs.some((tab) => tab.tabIndex === 0)) tabs[0].tabIndex = 0;
-    const currentPanel = $("panel-" + name);
-    if (currentPanel) {
-      const gap = currentPanel.getBoundingClientRect().top - bar.getBoundingClientRect().height;
-      if (gap < 0) window.scrollBy(0, gap - 16);
-    }
+    if (!tabs.some((tab) => tab.tabIndex === 0)) tabs[0].tabIndex = 0; // the tab bar stays reachable by keyboard
+    const gap = $("panel-" + name).getBoundingClientRect().top - bar.getBoundingClientRect().height;
+    if (gap < 0) window.scrollBy(0, gap - 16);
     window.dispatchEvent(new CustomEvent("tab-shown", { detail: { name, hash: location.hash } }));
   }
 
-  for (const tab of tabs) {
-    tab.addEventListener("click", () => { location.hash = tab.dataset.tab; });
-  }
+  for (const tab of tabs) tab.addEventListener("click", () => { location.hash = tab.dataset.tab; });
 
+  // Arrow keys, Home and End move between the tabs
   $("tab-collection").parentElement.addEventListener("keydown", (e) => {
     const at = tabs.indexOf(document.activeElement);
-    if (at < 0) return;
     const last = tabs.length - 1;
     const next = { ArrowRight: at === last ? 0 : at + 1, ArrowLeft: at === 0 ? last : at - 1, Home: 0, End: last }[e.key];
-    if (next === undefined) return;
+    if (at < 0 || next === undefined) return;
     e.preventDefault();
     tabs[next].focus();
     location.hash = tabs[next].dataset.tab;
@@ -63,9 +58,7 @@ function initTabs() {
   window.addEventListener("hashchange", () => {
     show(fromAddress());
     const active = document.activeElement;
-    if (active === document.body || active.closest("[hidden]")) {
-      tabs.find((tab) => tab.tabIndex === 0).focus({ preventScroll: true });
-    }
+    if (active === document.body || active.closest("[hidden]")) tabs.find((tab) => tab.tabIndex === 0).focus({ preventScroll: true });
   });
   show(fromAddress());
   return { back: () => before };

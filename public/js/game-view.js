@@ -3,20 +3,16 @@ function platformNames(game) {
   return list.flatMap((entry) => String(entry ?? "").split(",")).map((name) => name.trim()).filter(Boolean);
 }
 
-// Map platforms to recognized groups (e.g. PS4/PS5 -> PlayStation) or fallback tags
+// One tag per console family (PS4 and PS5 are both PlayStation); unknown platforms keep their own name
 function platformTags(game) {
-  const tags = [];
   const seen = new Set();
-  for (const name of platformNames(game)) {
+  return platformNames(game).flatMap((name) => {
     const known = platformFor(name);
     const key = known ? known.id : "other:" + name.toLowerCase();
-    if (seen.has(key)) continue;
+    if (seen.has(key)) return [];
     seen.add(key);
-    tags.push(known
-      ? { platform: known, label: known.abbr, title: known.name }
-      : { platform: platformById("other"), label: name, title: name });
-  }
-  return tags;
+    return [known ? { platform: known, label: known.abbr, title: known.name } : { platform: platformById("other"), label: name, title: name }];
+  });
 }
 
 function ratingOf(game) {
@@ -29,26 +25,41 @@ function yearOf(game) {
   return match ? Number(match[0]) : null;
 }
 
-const genresOf = (game) =>
-  Array.isArray(game.genres) ? game.genres.filter((g) => typeof g === "string" && g) : [];
-
-const imageOf = (game) =>
-  typeof game.image === "string" && /^https?:\/\//i.test(game.image) ? game.image : null;
-
+const genresOf = (game) => (Array.isArray(game.genres) ? game.genres.filter((g) => typeof g === "string" && g) : []);
+const imageOf = (game) => (typeof game.image === "string" && /^https?:\/\//i.test(game.image) ? game.image : null);
 const titleKey = (game) => String(game.title ?? "").trim().toLowerCase();
+const sameGame = (a, b) => Boolean((a.rawg_id && a.rawg_id === b.rawg_id) || (titleKey(a) && titleKey(a) === titleKey(b)));
 
-const sameGame = (a, b) =>
-  Boolean((a.rawg_id && a.rawg_id === b.rawg_id) || (titleKey(a) && titleKey(a) === titleKey(b)));
-
-// Request resized image from RAWG media CDN
+// Ask RAWG's image server for a smaller copy
 const artUrl = (url) =>
-  url.startsWith("https://media.rawg.io/media/") && !url.includes("/media/crop/")
-    ? url.replace("/media/", "/media/crop/600/400/")
-    : url;
+  url.startsWith("https://media.rawg.io/media/") && !url.includes("/media/crop/") ? url.replace("/media/", "/media/crop/600/400/") : url;
 
+// A click, Enter or Space on a cover or title opens the game's details page
+function opensDetails(node, game) {
+  const open = (e) => {
+    e.stopPropagation();
+    if (typeof openGameDetail === "function") openGameDetail(game);
+  };
+  node.addEventListener("click", open);
+  node.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    open(e);
+  });
+  return node;
+}
+
+const gameTitle = (tag, className, game) => opensDetails(el(tag, {
+  class: className + " clickable-title",
+  text: game.title || "Untitled game",
+  role: "button",
+  tabindex: "0",
+  "aria-label": "View details for " + (game.title || "game"),
+}), game);
+
+// The cover art, or a tile with the console's icon in its brand colour when there is none
 function cover(game, size = "") {
-  const first = platformTags(game)[0];
-  const platform = first ? first.platform : platformById("other");
+  const platform = platformTags(game)[0]?.platform || platformById("other");
   const tile = el("div", {
     class: "cover" + (size ? " cover-" + size : "") + " cover-clickable",
     "data-brand": platform.brand,
@@ -58,65 +69,26 @@ function cover(game, size = "") {
   }, icon(platform.id));
   const image = imageOf(game);
   if (image) {
+    // The full-size image when the smaller copy fails, and the console tile when both do
     const art = el("img", { src: artUrl(image), alt: "", loading: "lazy", decoding: "async" });
-    art.addEventListener("error", () => {
-      if (art.src !== image) art.src = image; // Fallback to original image if resized version fails
-      else art.remove();
-    });
+    art.addEventListener("error", () => (art.src !== image ? (art.src = image) : art.remove()));
     tile.append(art);
   }
-  const handleOpen = (e) => {
-    e.stopPropagation();
-    if (typeof openGameDetail === "function") openGameDetail(game);
-  };
-  tile.addEventListener("click", handleOpen);
-  tile.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      handleOpen(e);
-    }
-  });
-  return tile;
+  return opensDetails(tile, game);
 }
 
-function platformChip(tag) {
-  return el("span", { class: "chip chip-platform", title: tag.title },
-    icon(tag.platform.id),
-    el("span", { text: tag.label }),
-  );
-}
+const platformChip = (tag) =>
+  el("span", { class: "chip chip-platform", title: tag.title }, icon(tag.platform.id), el("span", { text: tag.label }));
 
-function ratingChip(rating) {
-  return el("span", { class: "chip chip-rating", title: "Rating out of 5" },
-    icon("star"),
-    el("span", { text: rating.toFixed(1) }),
-  );
-}
+const ratingChip = (rating) =>
+  el("span", { class: "chip chip-rating", title: "Rating out of 5" }, icon("star"), el("span", { text: rating.toFixed(1) }));
 
 function cardBody(game, className = "game-body") {
   const rating = ratingOf(game);
   const year = yearOf(game);
   const genres = genresOf(game);
-  const titleEl = el("h3", {
-    class: "game-title clickable-title",
-    text: game.title || "Untitled game",
-    role: "button",
-    tabindex: "0",
-    "aria-label": "View details for " + (game.title || "game"),
-  });
-  const handleOpen = (e) => {
-    e.stopPropagation();
-    if (typeof openGameDetail === "function") openGameDetail(game);
-  };
-  titleEl.addEventListener("click", handleOpen);
-  titleEl.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      handleOpen(e);
-    }
-  });
   return el("div", { class: className },
-    titleEl,
+    gameTitle("h3", "game-title", game),
     genres.length ? el("p", { class: "game-meta", text: genres.slice(0, 3).join(" · ") }) : null,
     el("p", { class: "tags" },
       rating ? ratingChip(rating) : null,
@@ -126,6 +98,7 @@ function cardBody(game, className = "game-body") {
   );
 }
 
+// Fills an empty-state box: a heading, a sentence, an optional Try again button and links
 function fillEmpty(box, { title, text, retry, links = [] }) {
   box.querySelector("h3").textContent = title;
   box.querySelector("p").textContent = text;
@@ -149,4 +122,3 @@ const SIGN_IN_LINKS = [
   { text: "Sign in", href: "#account", primary: true, mode: "signin" },
   { text: "Create account", href: "#account", mode: "signup" },
 ];
-

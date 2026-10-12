@@ -57,7 +57,7 @@ package.json      Dependencies
 public/           The web page, served as it is
   index.html      The tabbed page: Home, My Games, Wishlist, Look up online, Add a game, and the Account panel
   edit.html       The edit form for one game
-  app.js          The page's logic
+  app.js          Starts the games page or the edit page; the logic is in js/ and js/games/
   platforms.js    The list of consoles and how RAWG's platform names map to them
   style.css       Styles
   icons.svg       Console and interface icons
@@ -72,11 +72,12 @@ public/           The web page, served as it is
 | Collection | Save, edit and delete games. Each game belongs to one account (`userId`) | `server.js` (`/api/games`) |
 | Wishlist | Games you want next. Adding a game to the collection removes it from the wishlist, and a wishlist entry can be moved to the collection in one call. Duplicates are matched by RAWG id or lowercase title (`sameGame`) | `server.js` (`/api/wishlist`) |
 | Look up | Searches RAWG, returns the top 5 matches (`summarize`) and fetches full details for one game | `server.js` (`/api/lookup`) |
-| Trending | RAWG's "New and trending" list with adult-only games filtered out (`adultOnly`), repeats removed (`withoutRepeats`), cached for an hour, and refreshed by a single shared request (`refreshTrending`). It serves the stale cache if RAWG fails | `server.js` (`/api/trending`) |
+| Trending | RAWG's "New and trending" list with adult-only games filtered out (`adultOnly`), repeats removed, cached for an hour, and refreshed by a single shared request (`refreshTrending`). It serves the stale cache if RAWG fails | `server.js` (`/api/trending`) |
 | Forum | Comments per game, keyed by `forumKey` (`rawg-<id>` or `title-<title>`), with likes and dislikes (one vote per account) and a posting rate limit | `server.js` (`/api/forum`) |
 | Profiles | Profile pictures (JPEG, validated by `jpegSize`) and other players' profiles. Collections and wishlists are only shown to friends and to the owner | `profile.js` |
 | Friends | Requests, accepting, declining, cancelling and unfriending. `relation()` works out how two accounts are connected | `friends.js` |
 | Storage | `table()` and the `avatars` helper read and write the data files, and `newId()` makes ids | `db.js` |
+| Errors | Routes have no try/catch of their own: Express 5 passes anything they throw to the one error handler at the end of `server.js`, which answers `{ "error": "..." }` | `server.js` |
 
 ## How the database works
 

@@ -1,28 +1,15 @@
 function wishCard(item) {
   const title = item.title || "Untitled game";
-  const moveButton = el("button", {
-    class: "btn btn-primary btn-sm",
-    type: "button",
-    text: "Move to collection",
-    "aria-label": "Move to your collection: " + title,
-  });
-  const removeButton = el("button", {
-    class: "btn btn-ghost btn-sm",
-    type: "button",
-    text: "Remove",
-    "aria-label": "Remove from your wishlist: " + title,
-  });
-  moveButton.addEventListener("click", () => moveWish(item, moveButton));
-  removeButton.addEventListener("click", () => removeWish(item, removeButton));
-
+  const button = (className, text, label, action) =>
+    el("button", { class: "btn btn-sm " + className, type: "button", text, "aria-label": label + title, onclick: (e) => action(item, e.currentTarget) });
   return el("li", { class: "game game-wish", "data-id": item.id },
     cover(item),
     cardBody(item),
-    el("div", { class: "actions" }, moveButton, removeButton),
-    detailsPanel(item, {
-      isOpen: openCards.wishes.has(item.id),
-      onToggle: remember(openCards.wishes, item.id),
-    }),
+    el("div", { class: "actions" },
+      button("btn-primary", "Move to collection", "Move to your collection: ", moveWish),
+      button("btn-ghost", "Remove", "Remove from your wishlist: ", removeWish),
+    ),
+    detailsPanel(item, { isOpen: openCards.wishes.has(item.id), onToggle: remember(openCards.wishes, item.id) }),
   );
 }
 
@@ -41,28 +28,7 @@ function renderWishlist(enter = false) {
   });
 }
 
-async function loadWishlist() {
-  const list = $("wishlist");
-  showSkeletons(list, 2);
-  $("wishlist-empty").hidden = true;
-  try {
-    store.wishlist = await api("/api/wishlist");
-    store.loaded.wishlist = true;
-    renderWishlist(true);
-    renderBrowse();
-    renderAccount();
-  } catch (err) {
-    list.replaceChildren();
-    if (err.status !== 401) {
-      store.loaded.wishlist = "failed";
-      fillEmpty($("wishlist-empty"), { title: "Couldn't load your wishlist", text: err.message, retry: loadWishlist });
-      renderAccount();
-    }
-  } finally {
-    list.removeAttribute("aria-busy");
-  }
-}
-
+// The heart on a search result, a trending game or a details page: adds the game, or takes it off again
 async function toggleWish(result, button) {
   if (!isMember()) return askToSignIn("Sign in to keep a wishlist.");
   const existing = wishOf(result);

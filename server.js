@@ -7,528 +7,318 @@ const profile = require("./profile");
 const friends = require("./friends");
 
 const app = express();
-
 app.set("trust proxy", 1);
-
-app.use(cors());
-app.use(express.json());
-app.use(express.static("public"));
-
-const RAWG_API_KEY = process.env.RAWG_API_KEY || "d75605f6b2254c428360a0a491247add";
-
+app.use(cors(), express.json(), express.static("public"));
 app.use("/api/auth", auth.router);
 app.use("/api/profile", profile.router);
 app.use("/api/friends", friends.router);
 
+const RAWG_API_KEY = process.env.RAWG_API_KEY || "d75605f6b2254c428360a0a491247add";
+const rawg = (path, params, timeout) =>
+  axios.get("https://api.rawg.io/api/" + path, { params: { key: RAWG_API_KEY, ...params }, timeout }).then((res) => res.data);
+
+// ---------- Collection and wishlist: every record belongs to the account that saved it ----------
+
 const mine = (req) => (item) => item.userId === req.user.id;
-
-// Games match by RAWG ID or normalized title
+const mineWithId = (req) => (item) => item.userId === req.user.id && String(item.id) === String(req.params.id);
+// Two records are the same game when they share a RAWG id or a title (ignoring case and spaces)
 const titleKey = (game) => String(game.title ?? "").trim().toLowerCase();
-const sameGame = (a, b) =>
-  Boolean((a.rawg_id && a.rawg_id === b.rawg_id) || (titleKey(a) && titleKey(a) === titleKey(b)));
+const sameGame = (a, b) => Boolean((a.rawg_id && a.rawg_id === b.rawg_id) || (titleKey(a) && titleKey(a) === titleKey(b)));
+const WISH_FIELDS = ["rawg_id", "title", "released", "rating", "image", "platforms", "genres",
+  "developers", "publishers", "website", "esrb", "metacritic", "playtime"];
 
-app.get("/api/games", auth.requireAuth, (req, res) => {
-  try {
-    const games = db.read().filter(mine(req));
-    res.json(games);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to read database" });
-  }
-});
-
-app.post("/api/games", auth.requireMember("add games to your collection"), (req, res) => {
-  try {
-    const games = db.read();
-    const { id, userId, ...fields } = req.body ?? {};
-    const game = { id: db.newId(games), ...fields, userId: req.user.id };
-    games.push(game);
-    db.write(games);
-    leaveWishlist(req, game);
-    res.status(201).json(game);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to create game entry" });
-  }
-});
-
-// Remove game from wishlist once added to collection
-function leaveWishlist(req, game) {
-  try {
-    const wishlist = db.wishlist.read();
-    const rest = wishlist.filter((item) => !(mine(req)(item) && sameGame(item, game)));
-    if (rest.length !== wishlist.length) db.wishlist.write(rest);
-  } catch (error) {
-    console.error("Wishlist Error:", error);
-  }
+// Adds a game to the caller's collection; any id or userId the client sent is ignored
+function addGame(req, { id, userId, addedAt, ...fields }) {
+  const games = db.games.read();
+  const game = { id: db.newId(games), ...fields, userId: req.user.id };
+  db.games.write([...games, game]);
+  return game;
 }
 
+// Deletes the caller's record with the id in the address; false when there is none
+function removeMine(table, req) {
+  const list = table.read();
+  const rest = list.filter((item) => !mineWithId(req)(item));
+  if (rest.length !== list.length) table.write(rest);
+  return rest.length !== list.length;
+}
+
+app.get("/api/games", auth.requireAuth, (req, res) => res.json(db.games.read().filter(mine(req))));
+
+app.post("/api/games", auth.requireMember("add games to your collection"), (req, res) => {
+  const game = addGame(req, req.body ?? {});
+  // A game that is now owned leaves the wishlist
+  const wishlist = db.wishlist.read();
+  const rest = wishlist.filter((item) => !(mine(req)(item) && sameGame(item, game)));
+  if (rest.length !== wishlist.length) db.wishlist.write(rest);
+  res.status(201).json(game);
+});
+
 app.put("/api/games/:id", auth.requireAuth, (req, res) => {
-  try {
-    const games = db.read();
-    const game = games.find((g) => mine(req)(g) && String(g.id) === String(req.params.id));
-
-    if (!game) {
-      return res.status(404).json({ error: "Game not found" });
-    }
-
-    const { id, userId, ...changes } = req.body ?? {};
-    Object.assign(game, changes);
-    db.write(games);
-    res.json(game);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to update game" });
-  }
+  const games = db.games.read();
+  const game = games.find(mineWithId(req));
+  if (!game) return res.status(404).json({ error: "Game not found" });
+  const { id, userId, ...changes } = req.body ?? {};
+  Object.assign(game, changes);
+  db.games.write(games);
+  res.json(game);
 });
 
 app.delete("/api/games/:id", auth.requireAuth, (req, res) => {
-  try {
-    const games = db.read();
-    const targetId = String(req.params.id);
-    const updatedGames = games.filter((g) => !(mine(req)(g) && String(g.id) === targetId));
-
-    if (games.length === updatedGames.length) {
-      return res.status(404).json({ error: "Game not found" });
-    }
-
-    db.write(updatedGames);
-    res.json({ message: "Game deleted successfully" });
-  } catch (error) {
-    console.error("Delete Error:", error);
-    res.status(500).json({ error: "Failed to delete game" });
-  }
+  if (!removeMine(db.games, req)) return res.status(404).json({ error: "Game not found" });
+  res.json({ message: "Game deleted successfully" });
 });
 
-const WISH_FIELDS = [
-  "rawg_id", "title", "released", "rating", "image", "platforms", "genres",
-  "developers", "publishers", "website", "esrb", "metacritic", "playtime",
-];
+app.get("/api/wishlist", auth.requireAuth, (req, res) => res.json(db.wishlist.read().filter(mine(req))));
 
-app.get("/api/wishlist", auth.requireAuth, (req, res) => {
-  try {
-    res.json(db.wishlist.read().filter(mine(req)));
-  } catch (error) {
-    res.status(500).json({ error: "Failed to read wishlist" });
-  }
-});
-
-// CREATE - Put a game on the wishlist
 app.post("/api/wishlist", auth.requireMember("keep a wishlist"), (req, res) => {
-  try {
-    const body = req.body ?? {};
-    if (typeof body.title !== "string" || !body.title.trim()) {
-      return res.status(400).json({ error: "A game needs a title" });
-    }
+  const body = req.body ?? {};
+  if (typeof body.title !== "string" || !body.title.trim()) return res.status(400).json({ error: "A game needs a title" });
+  const fields = Object.fromEntries(WISH_FIELDS.filter((key) => body[key] !== undefined).map((key) => [key, body[key]]));
+  fields.title = body.title.trim();
 
-    const fields = {};
-    for (const key of WISH_FIELDS) {
-      if (body[key] !== undefined) fields[key] = body[key];
-    }
-    fields.title = body.title.trim();
-
-    if (db.read().some((g) => mine(req)(g) && sameGame(g, fields))) {
-      return res.status(409).json({ error: "That game is already in your collection." });
-    }
-    const wishlist = db.wishlist.read();
-    if (wishlist.some((item) => mine(req)(item) && sameGame(item, fields))) {
-      return res.status(409).json({ error: "That game is already on your wishlist." });
-    }
-
-    const item = { id: db.newId(wishlist), ...fields, userId: req.user.id, addedAt: new Date().toISOString() };
-    wishlist.push(item);
-    db.wishlist.write(wishlist);
-    res.status(201).json(item);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to add to wishlist" });
+  if (db.games.read().some((g) => mine(req)(g) && sameGame(g, fields))) {
+    return res.status(409).json({ error: "That game is already in your collection." });
   }
+  const wishlist = db.wishlist.read();
+  if (wishlist.some((item) => mine(req)(item) && sameGame(item, fields))) {
+    return res.status(409).json({ error: "That game is already on your wishlist." });
+  }
+  const item = { id: db.newId(wishlist), ...fields, userId: req.user.id, addedAt: new Date().toISOString() };
+  db.wishlist.write([...wishlist, item]);
+  res.status(201).json(item);
 });
 
 app.delete("/api/wishlist/:id", auth.requireAuth, (req, res) => {
-  try {
-    const wishlist = db.wishlist.read();
-    const targetId = String(req.params.id);
-    const rest = wishlist.filter((item) => !(mine(req)(item) && String(item.id) === targetId));
-
-    if (rest.length === wishlist.length) {
-      return res.status(404).json({ error: "Wishlist entry not found" });
-    }
-
-    db.wishlist.write(rest);
-    res.json({ message: "Removed from wishlist" });
-  } catch (error) {
-    console.error("Wishlist Delete Error:", error);
-    res.status(500).json({ error: "Failed to remove from wishlist" });
-  }
+  if (!removeMine(db.wishlist, req)) return res.status(404).json({ error: "Wishlist entry not found" });
+  res.json({ message: "Removed from wishlist" });
 });
 
+// Moves a wishlist entry into the collection: 201 when it was added, 200 when the game was already owned
 app.post("/api/wishlist/:id/collect", auth.requireMember("add games to your collection"), (req, res) => {
-  try {
-    const wishlist = db.wishlist.read();
-    const item = wishlist.find((w) => mine(req)(w) && String(w.id) === String(req.params.id));
-
-    if (!item) {
-      return res.status(404).json({ error: "Wishlist entry not found" });
-    }
-
-    const games = db.read();
-    let game = games.find((g) => mine(req)(g) && sameGame(g, item));
-    const status = game ? 200 : 201;
-    if (!game) {
-      const { id, userId, addedAt, ...fields } = item;
-      game = { id: db.newId(games), ...fields, userId: req.user.id };
-      games.push(game);
-      db.write(games);
-    }
-
-    db.wishlist.write(wishlist.filter((w) => w !== item));
-    res.status(status).json(game);
-  } catch (error) {
-    console.error("Collect Error:", error);
-    res.status(500).json({ error: "Failed to move the game to your collection" });
-  }
+  const wishlist = db.wishlist.read();
+  const item = wishlist.find(mineWithId(req));
+  if (!item) return res.status(404).json({ error: "Wishlist entry not found" });
+  const owned = db.games.read().find((g) => mine(req)(g) && sameGame(g, item));
+  const game = owned || addGame(req, item);
+  db.wishlist.write(wishlist.filter((w) => w !== item));
+  res.status(owned ? 200 : 201).json(game);
 });
 
+// ---------- RAWG: search, game details and the trending list ----------
+
+const names = (list) => (list || []).map((entry) => entry.name);
 const summarize = (game) => ({
   rawg_id: game.id,
   title: game.name,
   released: game.released || "N/A",
   rating: game.rating || "N/A",
   image: game.background_image || null,
-  platforms: game.platforms
-    ? game.platforms.map((p) => p.platform.name)
-    : [],
-  genres: game.genres ? game.genres.map((g) => g.name) : [],
+  platforms: (game.platforms || []).map((p) => p.platform.name),
+  genres: names(game.genres),
 });
 
 app.get("/api/lookup", async (req, res) => {
-  try {
-    const { title } = req.query;
-
-    if (!title) {
-      return res.status(400).json({ error: "Title query parameter is required" });
-    }
-
-    const response = await axios.get("https://api.rawg.io/api/games", {
-      params: {
-        key: RAWG_API_KEY,
-        search: title,
-        page_size: 5,
-      },
-    });
-
-    const results = response.data.results.map(summarize);
-
-    res.json(results);
-  } catch (error) {
-    console.error("RAWG Lookup Error:", error.response?.data || error.message);
-    res.status(500).json({ error: "Failed to fetch games from RAWG service" });
-  }
+  if (!req.query.title) return res.status(400).json({ error: "Title query parameter is required" });
+  const data = await rawg("games", { search: req.query.title, page_size: 5 });
+  res.json(data.results.map(summarize));
 });
 
-// Trending games cache (1 hour TTL)
+// A store without a usable link gets a search for the game, or the store's home page
+function storeLink(store, title) {
+  if (store.url?.startsWith("http")) return store.url;
+  const domain = store.store?.domain;
+  if (domain === "store.steampowered.com") return "https://store.steampowered.com/search/?term=" + encodeURIComponent(title);
+  if (domain) return "https://" + domain;
+  return "https://www.google.com/search?q=" + encodeURIComponent(title + " " + (store.store?.name || ""));
+}
+
+app.get("/api/lookup/:id", async (req, res) => {
+  const { id } = req.params;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ error: "Game id must be a number" });
+  const [game, shots] = await Promise.all([
+    rawg("games/" + id, {}, 10000),
+    rawg("games/" + id + "/screenshots", {}, 8000).catch(() => null),
+  ]);
+  const screenshots = (shots?.results || []).map((s) => s.image).filter(Boolean);
+  if (!screenshots.length) screenshots.push(...[game.background_image, game.background_image_additional].filter(Boolean));
+
+  res.json({
+    id: game.id,
+    rawg_id: game.id,
+    name: game.name,
+    title: game.name,
+    description_raw: game.description_raw || game.description || "",
+    description: game.description || game.description_raw || "",
+    released: game.released || null,
+    rating: game.rating || null,
+    rating_top: game.rating_top || null,
+    ratings: game.ratings || [],
+    ratings_count: game.ratings_count || 0,
+    reviews_count: game.reviews_count || 0,
+    playtime: game.playtime || null,
+    metacritic: game.metacritic || null,
+    website: game.website || null,
+    esrb: game.esrb_rating ? game.esrb_rating.name : null,
+    developers: names(game.developers),
+    publishers: names(game.publishers),
+    genres: names(game.genres),
+    tags: names(game.tags),
+    platforms: (game.platforms || []).map((p) => ({ name: p.platform ? p.platform.name : "", requirements: p.requirements || null })),
+    stores: (game.stores || []).map((s) => ({
+      id: s.store?.id,
+      name: s.store ? s.store.name : "Store",
+      domain: s.store ? s.store.domain : "",
+      url: storeLink(s, game.name),
+    })),
+    background_image: game.background_image || null,
+    background_image_additional: game.background_image_additional || null,
+    image: game.background_image || null,
+    screenshots,
+    clip: game.clip ? game.clip.clip || game.clip.video : null,
+    updated: game.updated || null,
+  });
+});
+
+// Trending: RAWG's own "New and trending" list, cached for an hour. That list is not in RAWG's public
+// docs, so when it fails the documented query (recent games by popularity) stands in.
 const TRENDING_DAYS = Number(process.env.TRENDING_DAYS) || 120;
 const TRENDING_SIZE = 12;
-// Ask for more than we show, because duplicates and adult-only games are dropped from the list
-const TRENDING_FETCH = 30;
+const TRENDING_FETCH = 30; // more than are shown, because repeats and adult-only games are dropped
 const TRENDING_TTL = 60 * 60 * 1000;
 let trending = { at: 0, games: [] };
 let refreshing = null;
 
-const isoDate = (date) => date.toISOString().slice(0, 10);
-
-// Adult-only games stay off the home page. Mainstream mature games carry tags like "Nudity", so those
-// alone don't count (Grand Theft Auto VI has it).
+// Mainstream mature games carry tags like "Nudity", so only these tags (or an AO rating) count as adult-only
 const ADULT_ONLY_TAGS = new Set(["hentai", "nsfw", "erotic", "eroge", "porn"]);
 const adultOnly = (game) =>
   game.esrb_rating?.slug === "adults-only" || (game.tags ?? []).some((tag) => ADULT_ONLY_TAGS.has(tag.slug));
 
-function withoutRepeats(games) {
-  const seen = new Set();
-  return games.filter((game) => !seen.has(game.id) && seen.add(game.id));
-}
-
 async function fetchTrending() {
   try {
-    // RAWG's own "New and trending" list, the one rawg.io puts first. It ranks by player counts and
-    // release date, so big games that are about to launch are in it too. It isn't in RAWG's public
-    // docs, so if it ever stops answering we fall back to the documented query below.
-    const response = await axios.get("https://api.rawg.io/api/games/lists/main", {
-      params: { key: RAWG_API_KEY, ordering: "-relevance", discover: true, page_size: TRENDING_FETCH },
-      timeout: 8000,
-    });
-    if (Array.isArray(response.data.results) && response.data.results.length) return response.data.results;
+    const data = await rawg("games/lists/main", { ordering: "-relevance", discover: true, page_size: TRENDING_FETCH }, 8000);
+    if (data.results?.length) return data.results;
     throw new Error("the list came back empty");
   } catch (error) {
     console.error("RAWG trending list failed, using the plain query instead:", error.response?.data || error.message);
+    const day = (date) => date.toISOString().slice(0, 10);
     const today = new Date();
     const since = new Date(today.getTime() - TRENDING_DAYS * 24 * 60 * 60 * 1000);
-    const response = await axios.get("https://api.rawg.io/api/games", {
-      params: {
-        key: RAWG_API_KEY,
-        dates: isoDate(since) + "," + isoDate(today),
-        ordering: "-added",
-        exclude_additions: true,
-        page_size: TRENDING_FETCH,
-      },
-      timeout: 8000,
-    });
-    return response.data.results;
+    const params = { dates: day(since) + "," + day(today), ordering: "-added", exclude_additions: true, page_size: TRENDING_FETCH };
+    return (await rawg("games", params, 8000)).results;
   }
 }
 
+// Visitors who ask at the same moment share one RAWG call
 function refreshTrending() {
-  // Coalesce concurrent requests into a single in-flight RAWG request
-  if (!refreshing) {
-    refreshing = fetchTrending()
-      .then((results) => {
-        const games = withoutRepeats(results).filter((game) => !adultOnly(game)).slice(0, TRENDING_SIZE);
-        trending = { at: Date.now(), games: games.map(summarize) };
-      })
-      .finally(() => {
-        refreshing = null;
-      });
-  }
+  refreshing ??= fetchTrending()
+    .then((results) => {
+      const seen = new Set();
+      const games = results.filter((game) => !seen.has(game.id) && seen.add(game.id) && !adultOnly(game));
+      trending = { at: Date.now(), games: games.slice(0, TRENDING_SIZE).map(summarize) };
+    })
+    .finally(() => { refreshing = null; });
   return refreshing;
 }
 
 app.get("/api/trending", async (req, res) => {
   try {
     if (Date.now() - trending.at > TRENDING_TTL) await refreshTrending();
-    res.json(trending.games);
   } catch (error) {
+    if (!trending.games.length) throw error;
+    // RAWG failed but an older list exists: serve it, and try RAWG again in a minute
     console.error("RAWG Trending Error:", error.response?.data || error.message);
-    // Fall back to stale cache on RAWG failure, retry after 1 minute
-    if (trending.games.length) {
-      trending.at = Date.now() - TRENDING_TTL + 60 * 1000;
-      return res.json(trending.games);
-    }
-    res.status(500).json({ error: "Failed to fetch trending games from RAWG service" });
+    trending.at = Date.now() - TRENDING_TTL + 60 * 1000;
   }
+  res.json(trending.games);
 });
 
-app.get("/api/lookup/:id", async (req, res) => {
-  const { id } = req.params;
+// ---------- Forums: one thread per game. Anyone can read; posting and voting need an account ----------
 
-  if (!/^\d+$/.test(id)) {
-    return res.status(400).json({ error: "Game id must be a number" });
-  }
-
-  try {
-    const [gameRes, screenRes] = await Promise.all([
-      axios.get("https://api.rawg.io/api/games/" + id, {
-        params: { key: RAWG_API_KEY },
-        timeout: 10000,
-      }),
-      axios.get("https://api.rawg.io/api/games/" + id + "/screenshots", {
-        params: { key: RAWG_API_KEY },
-        timeout: 8000,
-      }).catch(() => null),
-    ]);
-
-    const game = gameRes.data;
-    const screenshots = (screenRes?.data?.results || [])
-      .map((s) => s.image)
-      .filter(Boolean);
-
-    if (!screenshots.length) {
-      if (game.background_image) screenshots.push(game.background_image);
-      if (game.background_image_additional) screenshots.push(game.background_image_additional);
-    }
-
-    res.json({
-      id: game.id,
-      rawg_id: game.id,
-      name: game.name,
-      title: game.name,
-      description_raw: game.description_raw || game.description || "",
-      description: game.description || game.description_raw || "",
-      released: game.released || null,
-      rating: game.rating || null,
-      rating_top: game.rating_top || null,
-      ratings: game.ratings || [],
-      ratings_count: game.ratings_count || 0,
-      reviews_count: game.reviews_count || 0,
-      playtime: game.playtime || null,
-      metacritic: game.metacritic || null,
-      website: game.website || null,
-      esrb: game.esrb_rating ? game.esrb_rating.name : null,
-      developers: (game.developers || []).map((d) => d.name),
-      publishers: (game.publishers || []).map((p) => p.name),
-      genres: (game.genres || []).map((g) => g.name),
-      tags: (game.tags || []).map((t) => t.name),
-      platforms: (game.platforms || []).map((p) => ({
-        name: p.platform ? p.platform.name : "",
-        requirements: p.requirements || null,
-      })),
-      stores: (game.stores || []).map((s) => {
-        let storeUrl = s.url;
-        if (!storeUrl || !storeUrl.startsWith("http")) {
-          if (s.store?.domain === "store.steampowered.com") {
-            storeUrl = `https://store.steampowered.com/search/?term=${encodeURIComponent(game.name)}`;
-          } else if (s.store?.domain) {
-            storeUrl = `https://${s.store.domain}`;
-          } else {
-            storeUrl = `https://www.google.com/search?q=${encodeURIComponent(game.name + " " + (s.store?.name || ""))}`;
-          }
-        }
-        return {
-          id: s.store?.id,
-          name: s.store ? s.store.name : "Store",
-          domain: s.store ? s.store.domain : "",
-          url: storeUrl,
-        };
-      }),
-      background_image: game.background_image || null,
-      background_image_additional: game.background_image_additional || null,
-      image: game.background_image || null,
-      screenshots,
-      clip: game.clip ? (game.clip.clip || game.clip.video) : null,
-      updated: game.updated || null,
-    });
-  } catch (error) {
-    if (error.response?.status === 404) {
-      return res.status(404).json({ error: "Game not found on RAWG" });
-    }
-    console.error("RAWG Details Error:", error.response?.data || error.message);
-    res.status(500).json({ error: "Failed to fetch game details from RAWG service" });
-  }
-});
-
-// Game forums: every game has its own thread. Anyone can read it; posting and voting need a real account.
 const FORUM_MAX_LENGTH = 1000;
 const FORUM_MAX_SHOWN = 200;
 const FORUM_BURST = { count: 5, windowMs: 60 * 1000 };
+const requireMember = auth.requireMember("join the forum");
 
-// A thread is keyed by RAWG ID, or by normalized title for games added by hand.
+// A thread is "rawg-<id>", or "title-<lower-case title>" for a game added by hand
 function forumKey(raw) {
   const key = String(raw ?? "").trim();
   if (/^rawg-\d{1,9}$/.test(key)) return key;
-  if (key.startsWith("title-")) {
-    const title = key.slice(6).toLowerCase().replace(/\s+/g, " ").trim().slice(0, 120);
-    if (title && !/[\u0000-\u001f]/.test(title)) return "title-" + title;
-  }
-  return null;
+  const title = key.startsWith("title-") && key.slice(6).toLowerCase().replace(/\s+/g, " ").trim().slice(0, 120);
+  return title && !/[\u0000-\u001f]/.test(title) ? "title-" + title : null;
 }
 
-const requireMember = auth.requireMember("join the forum");
-
-// Each author's current account, looked up when a comment is read, so a new profile picture also
-// shows on the comments written before it.
-const forumAuthors = () => new Map(db.users.read().map((user) => [user.id, user]));
-
-// Votes live on the comment as { userId: 1 | -1 }; the page only gets totals and its own vote.
-function forumView(comment, viewer, authors) {
-  let likes = 0;
-  let dislikes = 0;
-  for (const value of Object.values(comment.votes ?? {})) {
-    if (value === 1) likes++;
-    else if (value === -1) dislikes++;
-  }
+// The page gets vote totals and its own vote, never who voted. Authors are looked up when a comment is
+// read, so a new profile picture also shows on older comments.
+function forumView(comment, viewer, authors = new Map(db.users.read().map((user) => [user.id, user]))) {
+  const votes = Object.values(comment.votes ?? {});
   return {
     id: comment.id,
     username: comment.username,
     avatarAt: authors.get(comment.userId)?.avatarAt ?? null,
     body: comment.body,
     createdAt: comment.createdAt,
-    likes,
-    dislikes,
+    likes: votes.filter((value) => value === 1).length,
+    dislikes: votes.filter((value) => value === -1).length,
     myVote: viewer ? comment.votes?.[viewer.id] ?? 0 : 0,
     mine: Boolean(viewer && comment.userId === viewer.id),
   };
 }
 
 app.get("/api/forum/:key/comments", (req, res) => {
-  try {
-    const key = forumKey(req.params.key);
-    if (!key) return res.status(400).json({ error: "That game has no forum." });
-
-    const viewer = auth.currentUser(req);
-    const comments = db.comments.read()
-      .filter((c) => c.gameKey === key)
-      .sort((a, b) => b.id - a.id)
-      .slice(0, FORUM_MAX_SHOWN);
-    res.set("Cache-Control", "no-store");
-    const authors = forumAuthors();
-    res.json(comments.map((c) => forumView(c, viewer, authors)));
-  } catch (error) {
-    console.error("Forum Read Error:", error);
-    res.status(500).json({ error: "Failed to load the comments" });
-  }
+  const key = forumKey(req.params.key);
+  if (!key) return res.status(400).json({ error: "That game has no forum." });
+  const viewer = auth.currentUser(req);
+  const authors = new Map(db.users.read().map((user) => [user.id, user]));
+  const comments = db.comments.read().filter((c) => c.gameKey === key).sort((a, b) => b.id - a.id).slice(0, FORUM_MAX_SHOWN);
+  res.set("Cache-Control", "no-store");
+  res.json(comments.map((c) => forumView(c, viewer, authors)));
 });
 
 app.post("/api/forum/:key/comments", requireMember, (req, res) => {
-  try {
-    const key = forumKey(req.params.key);
-    if (!key) return res.status(400).json({ error: "That game has no forum." });
+  const key = forumKey(req.params.key);
+  if (!key) return res.status(400).json({ error: "That game has no forum." });
+  const text = typeof req.body?.body === "string" ? req.body.body.replace(/\r\n?/g, "\n").replace(/\n{3,}/g, "\n\n").trim() : "";
+  if (!text) return res.status(400).json({ error: "Write something before you post." });
+  if (text.length > FORUM_MAX_LENGTH) return res.status(400).json({ error: "Comments can be up to " + FORUM_MAX_LENGTH + " characters." });
 
-    const text = typeof req.body?.body === "string"
-      ? req.body.body.replace(/\r\n?/g, "\n").replace(/\n{3,}/g, "\n\n").trim()
-      : "";
-    if (!text) return res.status(400).json({ error: "Write something before you post." });
-    if (text.length > FORUM_MAX_LENGTH) {
-      return res.status(400).json({ error: "Comments can be up to " + FORUM_MAX_LENGTH + " characters." });
-    }
-
-    const comments = db.comments.read();
-    const since = Date.now() - FORUM_BURST.windowMs;
-    const recent = comments.filter((c) => c.userId === req.user.id && Date.parse(c.createdAt) > since);
-    if (recent.length >= FORUM_BURST.count) {
-      return res.status(429).json({ error: "You're posting fast. Wait a minute, then try again." });
-    }
-
-    const comment = {
-      id: db.newId(comments),
-      gameKey: key,
-      userId: req.user.id,
-      username: req.user.username,
-      body: text,
-      createdAt: new Date().toISOString(),
-      votes: {},
-    };
-    comments.push(comment);
-    db.comments.write(comments);
-    res.status(201).json(forumView(comment, req.user, forumAuthors()));
-  } catch (error) {
-    console.error("Forum Post Error:", error);
-    res.status(500).json({ error: "Failed to post your comment" });
+  const comments = db.comments.read();
+  const since = Date.now() - FORUM_BURST.windowMs;
+  if (comments.filter((c) => c.userId === req.user.id && Date.parse(c.createdAt) > since).length >= FORUM_BURST.count) {
+    return res.status(429).json({ error: "You're posting fast. Wait a minute, then try again." });
   }
+  const comment = { id: db.newId(comments), gameKey: key, userId: req.user.id, username: req.user.username,
+    body: text, createdAt: new Date().toISOString(), votes: {} };
+  db.comments.write([...comments, comment]);
+  res.status(201).json(forumView(comment, req.user));
 });
 
-// Set (not toggle) a vote so a double click or a retry cannot flip it: 1 likes, -1 dislikes, 0 clears.
+// Sets (never toggles) a vote, so a double click or a retry cannot flip it: 1 likes, -1 dislikes, 0 clears
 app.post("/api/forum/comments/:id/vote", requireMember, (req, res) => {
-  try {
-    const value = req.body?.value;
-    if (value !== 1 && value !== -1 && value !== 0) {
-      return res.status(400).json({ error: "A vote is 1 (like), -1 (dislike) or 0 (clear)." });
-    }
-
-    const comments = db.comments.read();
-    const comment = comments.find((c) => String(c.id) === String(req.params.id));
-    if (!comment) return res.status(404).json({ error: "That comment is gone." });
-
-    comment.votes = comment.votes ?? {};
-    if (value === 0) delete comment.votes[req.user.id];
-    else comment.votes[req.user.id] = value;
-    db.comments.write(comments);
-    res.json(forumView(comment, req.user, forumAuthors()));
-  } catch (error) {
-    console.error("Forum Vote Error:", error);
-    res.status(500).json({ error: "Failed to save your vote" });
-  }
+  const value = req.body?.value;
+  if (![1, -1, 0].includes(value)) return res.status(400).json({ error: "A vote is 1 (like), -1 (dislike) or 0 (clear)." });
+  const comments = db.comments.read();
+  const comment = comments.find((c) => String(c.id) === String(req.params.id));
+  if (!comment) return res.status(404).json({ error: "That comment is gone." });
+  comment.votes ??= {};
+  if (value === 0) delete comment.votes[req.user.id];
+  else comment.votes[req.user.id] = value;
+  db.comments.write(comments);
+  res.json(forumView(comment, req.user));
 });
 
 app.delete("/api/forum/comments/:id", requireMember, (req, res) => {
-  try {
-    const comments = db.comments.read();
-    const rest = comments.filter((c) => !(c.userId === req.user.id && String(c.id) === String(req.params.id)));
-    if (rest.length === comments.length) {
-      return res.status(404).json({ error: "Comment not found" });
-    }
+  if (!removeMine(db.comments, req)) return res.status(404).json({ error: "Comment not found" });
+  res.json({ message: "Comment deleted" });
+});
 
-    db.comments.write(rest);
-    res.json({ message: "Comment deleted" });
-  } catch (error) {
-    console.error("Forum Delete Error:", error);
-    res.status(500).json({ error: "Failed to delete the comment" });
-  }
+// Express 5 sends every thrown or rejected error here, so the routes need no try/catch of their own
+app.use((error, req, res, next) => {
+  if (error.type === "entity.too.large") return res.status(413).json({ error: "That picture is too big. The limit is 512 KB." });
+  if (error.expose) return res.status(error.status).json({ error: error.message }); // a request body that can't be read
+  console.error(req.method + " " + req.path + ":", error.response?.data || error);
+  if (error.response?.status === 404) return res.status(404).json({ error: "Game not found on RAWG" });
+  res.status(500).json({ error: error.isAxiosError ? "Failed to fetch games from the RAWG service" : "Something went wrong on the server" });
 });
 
 // The test suite loads the app without starting a server of its own
@@ -536,8 +326,5 @@ module.exports = app;
 
 if (require.main === module) {
   const PORT = process.env.PORT || 3000;
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log("Server running at http://localhost:" + PORT);
-  });
+  app.listen(PORT, "0.0.0.0", () => console.log("Server running at http://localhost:" + PORT));
 }

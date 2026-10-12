@@ -36,7 +36,6 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   font-family: var(--sans);
-  font-optical-sizing: auto;
   font-size: 16px;
   font-weight: 500;
   line-height: 1.5;
@@ -74,10 +73,6 @@ body {
   gap: 20px 24px;
   width: min(1180px, 100% - 32px);
   margin-inline: auto;
-}
-
-.wrap-narrow {
-  width: min(560px, 100% - 32px);
 }
 
 .kicker {
@@ -241,6 +236,7 @@ a.brand:focus-visible {
   padding: clamp(24px, 4vw, 40px) 0 88px;
 }
 
+.wrap-narrow,
 .shell-narrow {
   width: min(560px, 100% - 32px);
 }
@@ -579,7 +575,8 @@ a.brand:focus-visible {
   box-shadow: var(--shadow-sm);
 }
 
-.member-stat dt {
+.member-stat dt,
+.detail dt {
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -609,7 +606,8 @@ label {
   text-transform: uppercase;
 }
 
-input {
+input,
+.forum-input {
   width: 100%;
   padding: 11px 14px;
   font: inherit;
@@ -622,19 +620,22 @@ input {
   transition: transform 0.1s, box-shadow 0.1s, background 0.1s;
 }
 
-input::placeholder {
+input::placeholder,
+.forum-input::placeholder {
   color: rgba(20, 33, 61, 0.65);
   font-weight: 500;
 }
 
 /* The focused field lights up amber and lifts off the page. */
-input:focus-visible {
+input:focus-visible,
+.forum-input:focus-visible {
   background: var(--amber);
   box-shadow: var(--shadow-sm);
   transform: translate(-2px, -2px);
 }
 
-input:focus-visible::placeholder {
+input:focus-visible::placeholder,
+.forum-input:focus-visible::placeholder {
   color: rgba(0, 0, 0, 0.6);
 }
 
@@ -738,10 +739,6 @@ input[aria-invalid="true"]:focus-visible {
   border: 0;
 }
 
-.platform-picker:disabled {
-  opacity: 0.5;
-}
-
 .platform-picker legend {
   padding: 0;
   margin-bottom: 8px;
@@ -772,7 +769,6 @@ input[aria-invalid="true"]:focus-visible {
 
 .platform-option {
   position: relative;
-  display: block;
   font-size: inherit;
   letter-spacing: normal;
   text-transform: none;
@@ -816,7 +812,6 @@ input[aria-invalid="true"]:focus-visible {
   line-height: 1;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  text-overflow: clip;
   white-space: nowrap;
 }
 
@@ -1016,13 +1011,15 @@ input[aria-invalid="true"]:focus-visible {
   transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
 }
 
-.game:hover {
+.game:hover,
+.trend:hover {
   background: var(--white);
   box-shadow: 8px 8px 0 var(--black);
   transform: translate(-3px, -3px);
 }
 
-.game.enter {
+.game.enter,
+.trend.enter {
   animation: slam 0.4s cubic-bezier(0.2, 0.9, 0.3, 1) backwards;
   animation-delay: calc(var(--i, 0) * 60ms);
 }
@@ -1047,10 +1044,10 @@ input[aria-invalid="true"]:focus-visible {
   height: 42px;
 }
 
-.cover img {
+.cover img,
+.avatar img {
   position: absolute;
   inset: 0;
-  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -1251,14 +1248,6 @@ input[aria-invalid="true"]:focus-visible {
   grid-column: 1 / -1;
 }
 
-.detail dt {
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--navy);
-}
-
 .detail dd {
   margin: 4px 0 0;
   font-size: 0.92rem;
@@ -1393,17 +1382,6 @@ input[aria-invalid="true"]:focus-visible {
   border: var(--bw) solid var(--black);
   box-shadow: 5px 5px 0 var(--black);
   transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
-}
-
-.trend:hover {
-  background: var(--white);
-  box-shadow: 8px 8px 0 var(--black);
-  transform: translate(-3px, -3px);
-}
-
-.trend.enter {
-  animation: slam 0.4s cubic-bezier(0.2, 0.9, 0.3, 1) backwards;
-  animation-delay: calc(var(--i, 0) * 60ms);
 }
 
 .trend-art {
@@ -1743,7 +1721,6 @@ input[aria-invalid="true"]:focus-visible {
 
 .chip-badge {
   font-size: 0.72rem;
-  font-weight: 800;
   padding: 3px 8px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -1752,13 +1729,11 @@ input[aria-invalid="true"]:focus-visible {
 .chip-owned {
   background: #2e7d32 !important;
   color: #ffffff !important;
-  border-color: var(--black) !important;
 }
 
 .chip-wished {
   background: var(--amber) !important;
   color: var(--black) !important;
-  border-color: var(--black) !important;
 }
 
 /* Hero Section */
@@ -1788,7 +1763,6 @@ input[aria-invalid="true"]:focus-visible {
 .chip-dark {
   background: var(--navy);
   color: var(--white);
-  font-weight: 800;
 }
 
 .chip-meta {
@@ -1819,7 +1793,6 @@ input[aria-invalid="true"]:focus-visible {
 }
 
 .btn.is-saved {
-  background: var(--gray);
   color: #555;
   cursor: default;
   opacity: 0.9;
@@ -1834,15 +1807,6 @@ input[aria-invalid="true"]:focus-visible {
   margin-bottom: 24px;
 }
 
-.detail-card-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
 .detail-card-title {
   margin: 0;
   font-size: 1.25rem;
@@ -1850,58 +1814,6 @@ input[aria-invalid="true"]:focus-visible {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--navy);
-}
-
-/* Ratings Card */
-.rating-title-group {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.rating-score-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--amber);
-  color: var(--black);
-  border: 2px solid var(--black);
-  font-weight: 900;
-  font-size: 0.9rem;
-  padding: 3px 8px;
-}
-
-.rating-score-chip .icon {
-  width: 14px;
-  height: 14px;
-}
-
-.rating-count-label {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #666;
-}
-
-.rating-badges {
-  display: flex;
-  gap: 8px;
-}
-
-.badge-rank {
-  background: var(--navy);
-  color: var(--white);
-  border: 2px solid var(--black);
-  font-weight: 900;
-  font-size: 0.76rem;
-  padding: 4px 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.badge-meta {
-  background: #2e7d32;
-  border-color: var(--black);
 }
 
 /* Two Column Layout */
@@ -2017,7 +1929,8 @@ input[aria-invalid="true"]:focus-visible {
   padding: 0;
 }
 
-.gallery-nav-btn:hover {
+.gallery-nav-btn:hover,
+.lightbox-nav-btn:hover {
   background: var(--amber-light);
   transform: translateY(-50%) scale(1.08);
 }
@@ -2197,11 +2110,6 @@ input[aria-invalid="true"]:focus-visible {
   transition: transform 0.1s ease;
 }
 
-.lightbox-nav-btn:hover {
-  background: var(--amber-light);
-  transform: translateY(-50%) scale(1.08);
-}
-
 .lightbox-nav-btn.prev {
   left: -28px;
 }
@@ -2232,11 +2140,7 @@ input[aria-invalid="true"]:focus-visible {
 }
 
 .store-link-btn {
-  display: inline-flex;
-  align-items: center;
   gap: 8px;
-  font-weight: 800;
-  text-decoration: none;
 }
 
 /* System Requirements */
@@ -2282,7 +2186,6 @@ input[aria-invalid="true"]:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 0;
 }
 .reqs-dropdown > .reqs-summary::-webkit-details-marker { display: none; }
 .reqs-dropdown > .reqs-summary::after {
@@ -2348,35 +2251,9 @@ input[aria-invalid="true"]:focus-visible {
 }
 
 .forum-input {
-  display: block;
-  width: 100%;
   min-height: 96px;
-  padding: 11px 14px;
-  font: inherit;
-  font-weight: 600;
   line-height: 1.5;
-  color: var(--black);
-  background: var(--white);
-  border: var(--bw) solid var(--black);
-  border-radius: 0;
-  outline: none;
   resize: vertical;
-  transition: transform 0.1s, box-shadow 0.1s, background 0.1s;
-}
-
-.forum-input::placeholder {
-  color: rgba(20, 33, 61, 0.65);
-  font-weight: 500;
-}
-
-.forum-input:focus-visible {
-  background: var(--amber);
-  box-shadow: var(--shadow-sm);
-  transform: translate(-2px, -2px);
-}
-
-.forum-input:focus-visible::placeholder {
-  color: rgba(0, 0, 0, 0.6);
 }
 
 .forum-form-foot {
@@ -2479,7 +2356,8 @@ input[aria-invalid="true"]:focus-visible {
 }
 
 /* The name is a link to the player's profile, marked like the other links in the app */
-.forum-author:hover {
+.forum-author:hover,
+.person-link:hover .person-name {
   text-decoration: underline;
   text-decoration-color: var(--amber);
   text-decoration-thickness: 3px;
@@ -2492,7 +2370,6 @@ input[aria-invalid="true"]:focus-visible {
 }
 
 .forum-avatar-link {
-  display: block;
   align-self: start;
   line-height: 0;
 }
@@ -2599,7 +2476,8 @@ input[aria-invalid="true"]:focus-visible {
   cursor: progress;
 }
 
-.forum-more-row {
+.forum-more-row,
+.shelf-more {
   display: flex;
   justify-content: center;
   margin-top: 16px;
@@ -2635,15 +2513,6 @@ input[aria-invalid="true"]:focus-visible {
   color: var(--amber);
   background: var(--navy);
   border: 2px solid var(--black);
-}
-
-.avatar img {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 
 .avatar-sm {
@@ -2770,7 +2639,8 @@ input[aria-invalid="true"]:focus-visible {
   transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
 }
 
-.shelf-item:hover {
+.shelf-item:hover,
+.person:hover {
   background: var(--white);
   box-shadow: 6px 6px 0 var(--black);
   transform: translate(-2px, -2px);
@@ -2856,12 +2726,6 @@ input[aria-invalid="true"]:focus-visible {
   transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
 }
 
-.person:hover {
-  background: var(--white);
-  box-shadow: 6px 6px 0 var(--black);
-  transform: translate(-2px, -2px);
-}
-
 /* Wide enough that a long name drops its buttons to a second line instead of being cut short */
 .person-link {
   display: flex;
@@ -2886,25 +2750,11 @@ input[aria-invalid="true"]:focus-visible {
   white-space: nowrap;
 }
 
-.person-link:hover .person-name {
-  text-decoration: underline;
-  text-decoration-color: var(--amber);
-  text-decoration-thickness: 3px;
-  text-underline-offset: 3px;
-}
-
 .person-actions {
   display: flex;
   flex: none;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-/* "Show more" under another player's shelf */
-.shelf-more {
-  display: flex;
-  justify-content: center;
-  margin-top: 16px;
 }
 
 /* Beside a name on a player's page: friends, or a request sent */

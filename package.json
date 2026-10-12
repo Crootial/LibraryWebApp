@@ -1,8 +1,6 @@
 {
   "name": "librarywebapp",
-  "version": "0.3.0",
-  "description": "",
-  "main": "index.js",
+  "version": "0.3.1",
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
@@ -11,8 +9,6 @@
     "test": "node --test \"test/**/*.test.js\"",
     "test:ci": "node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=test-results/junit.xml \"test/**/*.test.js\""
   },
-  "keywords": [],
-  "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {

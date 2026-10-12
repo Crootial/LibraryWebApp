@@ -1,8 +1,0 @@
-{
-  "name": "MyGameVault",
-  "description": "Video game database web app to search, save, and track your games and wishlist with RAWG integration.",
-  "permissions": [],
-  "capabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
-}

@@ -1,5 +1,3 @@
-const HOME_HINT = "Based on player counts and release date, like RAWG's own New and trending list. Games that aren't out yet are marked Coming.";
-
 const store = {
   user: null,
   games: [],
@@ -14,14 +12,11 @@ const store = {
   back: () => "home",
 };
 
-const openCards = {
-  games: new Set(),
-  wishes: new Set(),
-  results: new Set(),
-  trending: new Set(),
-};
+// Which cards have their details open, so a redraw keeps them open
+const openCards = { games: new Set(), wishes: new Set(), results: new Set(), trending: new Set() };
 const remember = (set, key) => (open) => (open ? set.add(key) : set.delete(key));
 
+const isMember = () => Boolean(store.user && !store.user.isGuest);
 const owned = (result) => store.games.some((g) => sameGame(g, result));
 const wishOf = (result) => store.wishlist.find((item) => sameGame(item, result));
 
@@ -34,7 +29,7 @@ function slamIn(card, i = 0) {
 }
 
 function drawCards(container, cards, enter) {
-  if (enter) cards.forEach((card, i) => slamIn(card, i));
+  if (enter) cards.forEach(slamIn);
   container.replaceChildren(...cards);
 }
 
@@ -48,25 +43,37 @@ function setTabCount(badge, count) {
   badge.textContent = count;
   if (changed && badge.dataset.ready) {
     badge.classList.remove("bump");
-    void badge.offsetWidth;
+    void badge.offsetWidth; // restart the animation
     badge.classList.add("bump");
   }
   badge.dataset.ready = "true";
 }
 
+// Loads the collection ("games") or the wishlist into the store and draws it
+async function loadList(kind) {
+  const list = $(kind);
+  showSkeletons(list, kind === "games" ? 3 : 2);
+  $(kind + "-empty").hidden = true;
+  try {
+    store[kind] = await api("/api/" + kind);
+    store.loaded[kind] = true;
+    (kind === "games" ? renderCollection : renderWishlist)(true);
+    renderBrowse();
+    renderAccount();
+  } catch (err) {
+    list.replaceChildren();
+    if (err.status === 401) return;
+    store.loaded[kind] = "failed";
+    fillEmpty($(kind + "-empty"), { title: "Couldn't load your " + kind, text: err.message, retry: () => loadList(kind) });
+    renderAccount();
+  } finally {
+    list.removeAttribute("aria-busy");
+  }
+}
+
 function askToSignIn(message) {
   toast(message);
   location.hash = "account";
-}
-
-// The username in an address like #user:Name (or user:Name), or "" if there is none
-function usernameIn(hash) {
-  const raw = String(hash).replace(/^#/, "").split(":")[1] || "";
-  try {
-    return decodeURIComponent(raw);
-  } catch {
-    return "";
-  }
 }
 
 // Send someone to sign in, and bring them back to this page once they have
@@ -79,6 +86,15 @@ function signInThenReturn(message) {
 window.addEventListener("tab-shown", (e) => {
   if (e.detail?.name !== "account") store.returnTo = null;
 });
+
+// The username in an address like #user:Name, or "" if there is none
+function usernameIn(hash) {
+  try {
+    return decodeURIComponent(String(hash).replace(/^#/, "").split(":")[1] || "");
+  } catch {
+    return "";
+  }
+}
 
 function showFailure(err) {
   if (err.status !== 401) toast(err.message, "error");
@@ -97,10 +113,10 @@ function actionFailed(err, button) {
   if (err.status === 404 || err.status === 409) resync();
 }
 
-// Retain keyboard focus across button re-renders
+// Puts the keyboard back on the same button (or the card's details bar) after the card is redrawn
 function holdFocus(button) {
-  if (document.activeElement !== button) return () => {};
   const card = button.closest("li");
+  if (document.activeElement !== button || !card) return () => {};
   const at = [...button.parentElement.children].indexOf(button);
   return () => {
     const target = card.querySelector(".save-actions")?.children[at];
@@ -108,6 +124,7 @@ function holdFocus(button) {
   };
 }
 
+// A search result with any RAWG details already fetched for it
 async function withFetched(result) {
   const extra = detailsCache.has(result.rawg_id) ? await detailsCache.get(result.rawg_id).catch(() => null) : null;
   return { ...result, ...extra };
