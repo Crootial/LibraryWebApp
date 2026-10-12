@@ -37,6 +37,9 @@ Everything under `/api/games` and `/api/wishlist` needs a signed-in account, and
 | POST | `/api/friends/:username` | Add someone. This asks them, or accepts if they have already asked you. Answers `{ relation }`. Asking twice changes nothing. You can have 50 requests waiting at once |
 | DELETE | `/api/friends/:username` | Take back whatever is between you: cancel your request, decline theirs, or unfriend. Answers 404 if there was nothing |
 
+## Project files
+
+```text
 
 server.js         Express server and the API routes
 auth.js           Accounts: password hashing, sign-in sessions and the /api/auth routes
@@ -60,6 +63,69 @@ public/           The web page, served as it is
   icons.svg       Console and interface icons
   favicon.svg     Tab icon
 ```
+
+## Core functions
+
+| Area | What it does | Where |
+| --- | --- | --- |
+| Accounts | Register, sign in and out. Passwords are hashed with scrypt, sign-ins are cookie sessions, and failed logins are rate limited. A visitor with no session is given a temporary guest account by `GET /api/auth/me` so the collection and wishlist work without registering, but forum posts, friends and profile changes need a real account | `auth.js` |
+| Collection | Save, edit and delete games. Each game belongs to one account (`userId`) | `server.js` (`/api/games`) |
+| Wishlist | Games you want next. Adding a game to the collection removes it from the wishlist, and a wishlist entry can be moved to the collection in one call. Duplicates are matched by RAWG id or lowercase title (`sameGame`) | `server.js` (`/api/wishlist`) |
+| Look up | Searches RAWG, returns the top 5 matches (`summarize`) and fetches full details for one game | `server.js` (`/api/lookup`) |
+| Trending | RAWG's "New and trending" list with adult-only games filtered out (`adultOnly`), repeats removed (`withoutRepeats`), cached for an hour, and refreshed by a single shared request (`refreshTrending`). It serves the stale cache if RAWG fails | `server.js` (`/api/trending`) |
+| Forum | Comments per game, keyed by `forumKey` (`rawg-<id>` or `title-<title>`), with likes and dislikes (one vote per account) and a posting rate limit | `server.js` (`/api/forum`) |
+| Profiles | Profile pictures (JPEG, validated by `jpegSize`) and other players' profiles. Collections and wishlists are only shown to friends and to the owner | `profile.js` |
+| Friends | Requests, accepting, declining, cancelling and unfriending. `relation()` works out how two accounts are connected | `friends.js` |
+| Storage | `table()` and the `avatars` helper read and write the data files, and `newId()` makes ids | `db.js` |
+
+## How the database works
+
+There is no database server. The data lives in plain JSON files, read and written by `db.js`.
+
+- `db.js` exposes one `table(name)` per file, each with `read()` (returns the whole list) and `write(list)` (replaces the file). A file that doesn't exist yet is created as `[]` on startup.
+- Every route follows the same pattern: `read()` the whole list, change it in memory, then `write()` it back. There are no queries or indexes, so filtering by owner or looking things up is done with `Array.filter` and `Array.find`. That is simple and readable, and fine for a small app. Writes are not locked, so it is not meant for many writers at once.
+- `newId(list)` makes numeric ids from the current time, moved past the highest id already in the list so two ids never collide. Accounts use random UUIDs instead.
+- Files live in `DATA_DIR` (default: next to `server.js`). Profile pictures are separate JPEG files in `avatars/`, written to a `.tmp` file and then renamed so nobody reads half a picture.
+
+| File | Holds | Main fields |
+| --- | --- | --- |
+| `library.json` | Saved games | `id`, `userId`, `rawg_id`, `title`, `released`, `rating`, `image`, `platforms[]`, `genres[]` |
+| `wishlist.json` | Wishlist entries, same shape as saved games | same as above |
+| `users.json` | Accounts | `id`, `username`, `key` (lowercase username), `passwordHash`, `createdAt`, `avatarAt`, `isGuest` |
+| `sessions.json` | Active sign-ins | `token` (SHA-256 of the cookie token), `userId`, `expires` |
+| `comments.json` | Forum comments | `id`, `gameKey`, `userId`, `username`, `body`, `createdAt`, `votes` (`{ userId: 1 or -1 }`) |
+| `friends.json` | One record per pair of accounts | `id`, `from`, `to`, `status` (`pending` or `accepted`), `createdAt`, `acceptedAt` |
+| `avatars/<userId>.jpg` | Profile pictures | the JPEG itself |
+
+Records are linked by `userId`, so a game, comment or friend request always points back to its account in `users.json`.
+
+## API usage
+
+The API is JSON over HTTP on the same port as the page (default `http://localhost:3000`). The full list of routes is in the table above. Sign-in is a cookie, so with `curl` keep it in a cookie jar (`-c` saves it, `-b` sends it).
+
+```bash
+# Create an account (this also signs you in) and keep the cookie
+curl -c jar.txt -H "Content-Type: application/json" \
+  -d '{"username":"player1","password":"correct horse battery"}' \
+  http://localhost:3000/api/auth/register
+
+# Search RAWG (no sign-in needed)
+curl "http://localhost:3000/api/lookup?title=hades"
+
+# Save a game to your collection
+curl -b jar.txt -H "Content-Type: application/json" \
+  -d '{"title":"Hades","rawg_id":274755,"released":"2020-09-17","platforms":["PC"],"genres":["Action"]}' \
+  http://localhost:3000/api/games
+
+# List your collection
+curl -b jar.txt http://localhost:3000/api/games
+
+# Edit it, then delete it (use the id from the previous response)
+curl -b jar.txt -X PUT -H "Content-Type: application/json" -d '{"rating":4.5}' http://localhost:3000/api/games/<id>
+curl -b jar.txt -X DELETE http://localhost:3000/api/games/<id>
+```
+
+Status codes: `200`/`201` success, `400` bad input, `403` a guest tried something that needs a real account, `404` not found, `409` already exists (for example a duplicate wishlist entry), `429` too many attempts, `500` a server or file error. Errors come back as `{ "error": "message" }`.
 
 ## Accounts
 
