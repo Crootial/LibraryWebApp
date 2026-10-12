@@ -208,9 +208,13 @@ router.use((req, res, next) => {
 
 router.post("/register", async (req, res) => {
   try {
-    const { username, password } = req.body ?? {};
+    const { username, password, confirmPassword } = req.body ?? {};
     const problem = credentialProblem(username, password);
     if (problem) return res.status(400).json({ error: problem });
+    // The sign-up form sends the second password field along. Callers that leave it out are not checked.
+    if (confirmPassword !== undefined && confirmPassword !== password) {
+      return res.status(400).json({ error: "The two passwords don't match." });
+    }
 
     const passwordHash = await hashPassword(password);
 

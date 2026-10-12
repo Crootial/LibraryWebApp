@@ -6,11 +6,11 @@ A video game database web app. Search the [RAWG](https://rawg.io) game database,
 git clone https://github.com/Crootial/LibraryWebApp.git
 
 
-Everything under `/api/games` and `/api/wishlist` needs a signed-in account, and only ever touches that account's own games. `/api/trending`, `/api/lookup` and `/api/auth/*` are open to everyone. Anyone can read the forum under `/api/forum` and see a profile picture; posting, voting, deleting and changing your own picture need a real account (a guest gets a 403). So do `/api/friends` and looking at another player's profile.
+Everything under `/api/games` and `/api/wishlist` needs a signed-in account, and only ever touches that account's own games. Adding a game (to the collection or the wishlist) needs a real account: a guest gets a 403. `/api/trending`, `/api/lookup` and `/api/auth/*` are open to everyone. Anyone can read the forum under `/api/forum` and see a profile picture; posting, voting, deleting and changing your own picture need a real account (a guest gets a 403). So do `/api/friends` and looking at another player's profile.
 
 | Method | Path | What it does |
 | --- | --- | --- |
-| POST | `/api/auth/register` | Create an account from `{ "username", "password" }` and sign in to it. Usernames are 3 to 24 letters, numbers, dots, dashes or underscores. Passwords are 8 to 128 characters |
+| POST | `/api/auth/register` | Create an account from `{ "username", "password" }` and sign in to it. The sign-up form also sends `"confirmPassword"`; if it is there and differs from `password` the answer is 400 and no account is made. Usernames are 3 to 24 letters, numbers, dots, dashes or underscores. Passwords are 8 to 128 characters |
 | POST | `/api/auth/login` | Sign in with `{ "username", "password" }`. After 8 wrong passwords within ten minutes, that username has to wait from that address until the ten minutes are up |
 | POST | `/api/auth/logout` | Sign out |
 | GET | `/api/auth/me` | `{ "user": { id, username, createdAt, avatarAt } }` for the signed-in account, or `{ "user": null }` |
@@ -68,7 +68,7 @@ public/           The web page, served as it is
 
 | Area | What it does | Where |
 | --- | --- | --- |
-| Accounts | Register, sign in and out. Passwords are hashed with scrypt, sign-ins are cookie sessions, and failed logins are rate limited. A visitor with no session is given a temporary guest account by `GET /api/auth/me` so the collection and wishlist work without registering, but forum posts, friends and profile changes need a real account | `auth.js` |
+| Accounts | Register, sign in and out. Passwords are hashed with scrypt, sign-ins are cookie sessions, and failed logins are rate limited. A visitor with no session is given a temporary guest account by `GET /api/auth/me`, which can browse and search, but adding games, forum posts, friends and profile changes need a real account | `auth.js` |
 | Collection | Save, edit and delete games. Each game belongs to one account (`userId`) | `server.js` (`/api/games`) |
 | Wishlist | Games you want next. Adding a game to the collection removes it from the wishlist, and a wishlist entry can be moved to the collection in one call. Duplicates are matched by RAWG id or lowercase title (`sameGame`) | `server.js` (`/api/wishlist`) |
 | Look up | Searches RAWG, returns the top 5 matches (`summarize`) and fetches full details for one game | `server.js` (`/api/lookup`) |
@@ -140,6 +140,43 @@ The data lives in plain JSON files next to `server.js`, in the same way as `libr
 - `users.json`, `sessions.json`, `wishlist.json`, `comments.json`, `friends.json` and `avatars/` are listed in `.gitignore`. Don't commit them.
 
 Environment variables, all optional: `PORT` (default 3000), `DATA_DIR` (where the JSON files are kept, default the folder of `server.js`), `RAWG_API_KEY`, `TRENDING_DAYS` (how far back the fallback trending list looks, default 120) and `COOKIE_SECURE`.
+
+## Tests and the Jenkins pipeline
+
+`npm test` runs the automated tests in `test/` with Node's built-in test runner (no extra packages). They start the app on a random port with an empty temporary `DATA_DIR`, so they never touch your own data, and RAWG is replaced by a small stand-in, so they need no internet or API key.
+
+Each case from the test plan is a test. A case marked PASSED must succeed. A case marked FAILURE must be refused by the app, so that test is green when the app says no.
+
+| File | Cases |
+| --- | --- |
+| `test/search.test.js` | Search a game that exists (found) and one that does not (nothing found) |
+| `test/signup.test.js` | Matching passwords (account made) and mismatching passwords (refused) |
+| `test/login.test.js` | Right/right signs in; right/wrong, wrong/right and wrong/wrong are refused |
+| `test/collection.test.js` | A signed-in user adds to the collection and wishlist; a guest is refused |
+| `test/forum.test.js` | A signed-in user posts a comment; a signed-out visitor is refused |
+
+The `Jenkinsfile` runs everything in Docker, so Jenkins only needs Docker and the JUnit plugin: build the `test` stage of the `Dockerfile`, lint, run the tests and publish `junit.xml`, then build the `runtime` image. To run the same thing by hand:
+
+```bash
+docker build --target test -t librarywebapp-test .
+docker run --rm librarywebapp-test
+```
+
+### Trying the pipeline on your own machine
+
+`jenkins/` holds a Jenkins that is already set up with the pipeline job, so there is nothing to click through. It needs only Docker:
+
+```bash
+cd jenkins
+docker compose up -d --build
+```
+
+Open http://localhost:8080 and sign in as `admin` with the password `admin` (set `JENKINS_ADMIN_PASSWORD` to change it), then press **Build Now** on `librarywebapp`. The first start takes a minute or two.
+
+- Jenkins checks the code out with git, so it builds what is **committed** on `main` (set `REPO_BRANCH` for another branch). Commit before you build.
+- It uses your own Docker through the mounted socket, so the images the pipeline builds (`librarywebapp:<build number>`) show up in `docker images`.
+- It listens on `127.0.0.1` only. Anyone who can use this Jenkins can control your Docker, so don't expose it.
+- `docker compose down -v` removes it and its build history.
 
 ## Troubleshooting
 

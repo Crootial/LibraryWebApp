@@ -1,0 +1,22 @@
+# Installed inside the image by npm ci
+node_modules
+npm-debug.log
+
+# Local data: accounts, sign-ins, saved games, pictures. Never bake these into an image.
+users.json
+sessions.json
+wishlist.json
+comments.json
+friends.json
+avatars
+test-results
+
+# Not needed to build or test
+.git
+.claude
+.env
+*.docx
+Jenkinsfile
+Dockerfile
+.dockerignore
+jenkins

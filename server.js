@@ -36,7 +36,7 @@ app.get("/api/games", auth.requireAuth, (req, res) => {
   }
 });
 
-app.post("/api/games", auth.requireAuth, (req, res) => {
+app.post("/api/games", auth.requireMember("add games to your collection"), (req, res) => {
   try {
     const games = db.read();
     const { id, userId, ...fields } = req.body ?? {};
@@ -111,7 +111,7 @@ app.get("/api/wishlist", auth.requireAuth, (req, res) => {
 });
 
 // CREATE - Put a game on the wishlist
-app.post("/api/wishlist", auth.requireAuth, (req, res) => {
+app.post("/api/wishlist", auth.requireMember("keep a wishlist"), (req, res) => {
   try {
     const body = req.body ?? {};
     if (typeof body.title !== "string" || !body.title.trim()) {
@@ -159,7 +159,7 @@ app.delete("/api/wishlist/:id", auth.requireAuth, (req, res) => {
   }
 });
 
-app.post("/api/wishlist/:id/collect", auth.requireAuth, (req, res) => {
+app.post("/api/wishlist/:id/collect", auth.requireMember("add games to your collection"), (req, res) => {
   try {
     const wishlist = db.wishlist.read();
     const item = wishlist.find((w) => mine(req)(w) && String(w.id) === String(req.params.id));
@@ -531,8 +531,13 @@ app.delete("/api/forum/comments/:id", requireMember, (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
+// The test suite loads the app without starting a server of its own
+module.exports = app;
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log("Server running at http://localhost:" + PORT);
-});
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log("Server running at http://localhost:" + PORT);
+  });
+}

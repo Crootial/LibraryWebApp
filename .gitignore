@@ -12,3 +12,6 @@ node_modules/
 
 # Profile pictures people upload (the folder is created when the first one is saved)
 avatars/
+
+# Test reports written by the pipeline
+test-results/

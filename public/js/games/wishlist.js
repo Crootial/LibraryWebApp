@@ -33,7 +33,7 @@ function renderWishlist(enter = false) {
 
   const empty = $("wishlist-empty");
   if (cards.length) empty.hidden = true;
-  else if (!store.user) fillEmpty(empty, { title: "Sign in to keep a wishlist", text: "Save the games you want to play next.", links: SIGN_IN_LINKS });
+  else if (!isMember()) fillEmpty(empty, { title: "Sign in to keep a wishlist", text: "Save the games you want to play next.", links: SIGN_IN_LINKS });
   else fillEmpty(empty, {
     title: "Your wishlist is empty",
     text: "Tap the heart on a game to save it for later.",
@@ -64,7 +64,7 @@ async function loadWishlist() {
 }
 
 async function toggleWish(result, button) {
-  if (!store.user) return askToSignIn("Sign in to keep a wishlist.");
+  if (!isMember()) return askToSignIn("Sign in to keep a wishlist.");
   const existing = wishOf(result);
   const restoreFocus = holdFocus(button);
   setBusy(button, true, existing ? "Removing" : "Saving");

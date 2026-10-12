@@ -72,7 +72,7 @@ function visibleGames() {
 }
 
 function fillCollectionEmpty(empty) {
-  if (!store.user) {
+  if (!isMember()) {
     fillEmpty(empty, { title: "Sign in to see your games", text: "Your collection is saved to your account.", links: SIGN_IN_LINKS });
   } else if (store.games.length) {
     fillEmpty(empty, { title: "No matches", text: "Nothing in your collection matches “" + store.filter.trim() + "”." });

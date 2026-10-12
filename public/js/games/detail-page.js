@@ -403,6 +403,7 @@ function renderGameDetailView() {
 
   addBtn.addEventListener("click", async () => {
     if (owned(game)) return;
+    if (!isMember()) return askToSignIn("Sign in to add games to your collection.");
     setBusy(addBtn, true, "Adding...");
     try {
       const payload = getCleanPayload();

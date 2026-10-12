@@ -132,7 +132,7 @@ async function loadTrending() {
 }
 
 async function addResult(result, button) {
-  if (!store.user) return askToSignIn("Sign in to add games to your collection.");
+  if (!isMember()) return askToSignIn("Sign in to add games to your collection.");
   const restoreFocus = holdFocus(button);
   setBusy(button, true, "Adding");
   try {

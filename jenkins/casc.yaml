@@ -1,0 +1,31 @@
+# Jenkins configuration as code: a local admin and the pipeline job, so there is nothing to click through.
+jenkins:
+  systemMessage: "Local Jenkins for testing the LibraryWebApp pipeline"
+  numExecutors: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          password: "${JENKINS_ADMIN_PASSWORD:-admin}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+jobs:
+  - script: >
+      pipelineJob('librarywebapp') {
+        description('Runs the Jenkinsfile from the repository mounted at /repo')
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote { url('/repo') }
+                branches('*/${REPO_BRANCH:-main}')
+              }
+            }
+            scriptPath('Jenkinsfile')
+            lightweight(false)
+          }
+        }
+      }

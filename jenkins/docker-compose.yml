@@ -1,0 +1,26 @@
+# Run from this folder:  docker compose up -d --build
+# Then open http://localhost:8080 (user admin, password admin unless JENKINS_ADMIN_PASSWORD is set)
+#
+# The job builds whatever is COMMITTED on REPO_BRANCH (default main) in the repository one folder up.
+# Uncommitted changes are not seen, because Jenkins checks the code out with git.
+name: librarywebapp-jenkins
+
+services:
+  jenkins:
+    build: .
+    container_name: librarywebapp-jenkins
+    # root, so Jenkins can use the Docker socket on every host
+    user: root
+    ports:
+      # Only this machine can reach it: Jenkins here is root-equivalent on your Docker
+      - "127.0.0.1:${JENKINS_PORT:-8080}:8080"
+    environment:
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:-admin}
+      REPO_BRANCH: ${REPO_BRANCH:-main}
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${REPO_PATH:-..}:/repo:ro
+
+volumes:
+  jenkins_home:

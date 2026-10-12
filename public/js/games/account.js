@@ -34,9 +34,9 @@ function applyUser() {
   $("filter").closest(".search").hidden = !user;
   $("home-hint").textContent = HOME_HINT;
 
-  $("add-form").hidden = !user;
-  $("add-hint").hidden = !user;
-  if (user) $("add-empty").hidden = true;
+  $("add-form").hidden = !isRealUser;
+  $("add-hint").hidden = !isRealUser;
+  if (isRealUser) $("add-empty").hidden = true;
   else fillEmpty($("add-empty"), { title: "Sign in to add games", text: "Games you add are saved to your account.", links: SIGN_IN_LINKS });
 
   renderAll();
@@ -98,7 +98,7 @@ function initSignUpForm() {
     }
     if (password.value.length < 8) return showFormError(form, "Use at least 8 characters for the password.", "password");
     if (password.value !== again.value) return showFormError(form, "The two passwords don't match.", "confirm");
-    signInWith(form, "/api/auth/register", { username: name, password: password.value }, "Creating", (me) => "Welcome to MyGameVault, " + me.username + ".");
+    signInWith(form, "/api/auth/register", { username: name, password: password.value, confirmPassword: again.value }, "Creating", (me) => "Welcome to MyGameVault, " + me.username + ".");
   });
 }
 
