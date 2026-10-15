@@ -16,6 +16,7 @@ RUN jenkins-plugin-cli --plugins \
     configuration-as-code \
     job-dsl \
     workflow-aggregator \
+    pipeline-stage-view \
     git \
     junit \
     timestamper

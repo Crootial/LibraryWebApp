@@ -44,8 +44,10 @@ Jenkins only builds **committed** code. Uncommitted edits are invisible to it.
    git commit -am "Demo: remove the guest check"
    ```
 
-   Build #3 starts by itself and turns red at the Test stage. Open Test Result: the failing case is
-   "Case 2: guest adds to collection and wishlist". The Build app image stage never runs, so a broken
+   Build #3 starts by itself and turns red at the Test stage. Open Test Result: 2 of 12 fail, both in
+   the "Adding a game to the collection and wishlist" group: "Case 2: guest adds to collection and
+   wishlist" (the guest is no longer refused) and "Case 1: user is logged in..." (this edit also removes
+   the login lookup, so a member's save breaks too). The Build app image stage is skipped, so a broken
    version is never packaged.
 4. **Fix -> green again.**
 
