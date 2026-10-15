@@ -15,7 +15,11 @@ jenkins:
 jobs:
   - script: >
       pipelineJob('librarywebapp') {
-        description('Runs the Jenkinsfile from the repository mounted at /repo')
+        description('Runs the Jenkinsfile from the repository mounted at /repo. Builds by itself when a new commit appears.')
+        // Automatic trigger, set here so it is active before the first build. The Jenkinsfile repeats it.
+        triggers {
+          scm('* * * * *')
+        }
         definition {
           cpsScm {
             scm {

@@ -15,6 +15,12 @@ def docker(String command, boolean returnStatus = false) {
 pipeline {
     agent any
 
+    // Automatic trigger: Jenkins asks the repository for new commits every minute and starts a build
+    // when it finds one, so nobody has to press "Build Now". Polling needs no public URL or webhook.
+    triggers {
+        pollSCM('* * * * *')
+    }
+
     options {
         timestamps()
         timeout(time: 20, unit: 'MINUTES')
