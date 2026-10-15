@@ -164,5 +164,60 @@
       "RPG"
     ],
     "userId": "42012a15-6074-483f-8c78-ae121b1867d3"
+  },
+  {
+    "id": 1791810614300,
+    "rawg_id": 490430,
+    "title": "Prince of Persia: The Sands of Time Remake",
+    "released": "2026-12-31",
+    "rating": 3.81,
+    "image": "https://media.rawg.io/media/games/b92/b92b55aeab9ed1777104f71f4b22a613.jpg",
+    "platforms": [
+      "PlayStation 5",
+      "PC",
+      "PlayStation 4",
+      "Xbox One",
+      "Xbox Series S/X"
+    ],
+    "genres": [
+      "Action"
+    ],
+    "userId": "7cc67d64-699f-46e1-b941-c9e6161ba0d0"
+  },
+  {
+    "id": 1791810615344,
+    "rawg_id": 248521,
+    "title": "Valheim",
+    "released": "2026-09-09",
+    "rating": 3.98,
+    "image": "https://media.rawg.io/media/games/adb/adb59be81367b19c2544457424bcf086.jpg",
+    "platforms": [
+      "Linux",
+      "PC"
+    ],
+    "genres": [
+      "Action",
+      "Adventure",
+      "Indie"
+    ],
+    "userId": "7cc67d64-699f-46e1-b941-c9e6161ba0d0"
+  },
+  {
+    "id": 1791810616486,
+    "rawg_id": 471026,
+    "title": "Fable",
+    "released": "2027-02-23",
+    "rating": 3.69,
+    "image": "https://media.rawg.io/media/games/e06/e06a04ece5555c8c15a7c68e22649f0c.jpg",
+    "platforms": [
+      "PC",
+      "PlayStation 5",
+      "Xbox Series S/X"
+    ],
+    "genres": [
+      "Action",
+      "RPG"
+    ],
+    "userId": "7cc67d64-699f-46e1-b941-c9e6161ba0d0"
   }
 ]
