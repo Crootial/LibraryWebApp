@@ -219,5 +219,36 @@
       "RPG"
     ],
     "userId": "7cc67d64-699f-46e1-b941-c9e6161ba0d0"
+  },
+  {
+    "id": 1792140152649,
+    "rawg_id": 22509,
+    "title": "Minecraft",
+    "released": "2009-05-10",
+    "rating": 4.44,
+    "image": "https://media.rawg.io/media/games/b4e/b4e4c73d5aa4ec66bbf75375c4847a2b.jpg",
+    "platforms": [
+      "PC",
+      "Xbox One",
+      "PlayStation 4",
+      "Nintendo Switch",
+      "iOS",
+      "Android",
+      "Nintendo 3DS",
+      "macOS",
+      "Linux",
+      "Xbox 360",
+      "PlayStation 3",
+      "PS Vita",
+      "Wii U"
+    ],
+    "genres": [
+      "Action",
+      "Arcade",
+      "Simulation",
+      "Indie",
+      "Massively Multiplayer"
+    ],
+    "userId": "7cc67d64-699f-46e1-b941-c9e6161ba0d0"
   }
 ]

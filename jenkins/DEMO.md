@@ -78,3 +78,5 @@ docker compose down -v
 - **Docker error in a stage:** Docker Desktop is not running or still starting.
 - **Port 8080 busy:** set `$env:JENKINS_PORT = "8081"` before `docker compose up`.
 - **Want a webhook instead of polling:** this repository is private and Jenkins runs on a laptop, so GitHub cannot reach it. Polling is the version that works without a public URL.
+
+## 10/16/2026 - oreos
