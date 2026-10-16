@@ -80,3 +80,5 @@ docker compose down -v
 - **Want a webhook instead of polling:** this repository is private and Jenkins runs on a laptop, so GitHub cannot reach it. Polling is the version that works without a public URL.
 
 ## 10/16/2026 - oreos
+
+## 10/16/2026 - oreos / build test

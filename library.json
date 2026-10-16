@@ -250,5 +250,34 @@
       "Massively Multiplayer"
     ],
     "userId": "7cc67d64-699f-46e1-b941-c9e6161ba0d0"
+  },
+  {
+    "id": 1792145812910,
+    "rawg_id": 248521,
+    "title": "Valheim",
+    "released": "2026-09-09",
+    "rating": 3.98,
+    "image": "https://media.rawg.io/media/screenshots/ad2/ad235d65b89c44add3aaebac1051af87.jpg",
+    "platforms": [
+      "Linux",
+      "PC"
+    ],
+    "genres": [
+      "Action",
+      "Adventure",
+      "Indie"
+    ],
+    "developers": [
+      "Dvoid",
+      "Richard Svensson"
+    ],
+    "publishers": [
+      "Coffee Stain"
+    ],
+    "website": "https://www.valheimgame.com",
+    "esrb": null,
+    "metacritic": null,
+    "playtime": 12,
+    "userId": "ed018fb8-1ee8-4543-b9b7-cfab4c84c6d0"
   }
 ]
